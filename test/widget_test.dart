@@ -1,30 +1,25 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fashion_room_girls/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('Shop screen shows items and opens purchase dialog', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Store'), findsOneWidget);
+    expect(find.textContaining('12 500 TC'), findsOneWidget);
+    expect(find.text('Chaussures'), findsOneWidget);
+    expect(find.text('Baskets Coeur'), findsOneWidget);
+    expect(find.text('ACHETER >'), findsWidgets);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    await tester.tap(find.text('ACHETER >').first);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text("CONFIRMER L'ACHAT"), findsOneWidget);
+    expect(find.text('CONFIRMER'), findsOneWidget);
+    expect(find.text('ANNULER'), findsOneWidget);
   });
 }

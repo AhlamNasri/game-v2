@@ -66,6 +66,16 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
      - assets/
+     - assets/background/
+     - assets/clothes/chaussures/
+     - assets/clothes/accessoires/
+     - assets/clothes/robes/
+     - assets/clothes/pantalons/
+     - assets/clothes/tshirts/
+     - assets/furniture/lits/
+     - assets/furniture/lampes/
+     - assets/furniture/bureaux/
+     - assets/furniture/tapis/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
