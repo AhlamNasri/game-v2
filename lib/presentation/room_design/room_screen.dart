@@ -199,7 +199,7 @@ class _RoomScreenState extends State<RoomScreen> {
       case 'plant':   return 90;
       case 'clock':   return 70;
       case 'tableau': return 110;
-      case 'deco1':   return 80;
+      case 'deco':   return 80;
       default:        return 120;
     }
   }
