@@ -66,4 +66,5 @@ class DefaultFirebaseOptions {
     projectId: 'fashion-room-girls',
     storageBucket: 'fashion-room-girls.firebasestorage.app',
   );
+
 }
