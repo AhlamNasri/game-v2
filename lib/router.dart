@@ -1,23 +1,11 @@
 import 'package:fashion_room_girls/presentation/auth/login_screen.dart';
 import 'package:fashion_room_girls/presentation/auth/register_screen.dart';
 import 'package:go_router/go_router.dart';
+import 'presentation/room_design/room_screen.dart';
 
-// final appRouter = GoRouter(
-//   routes: [
-//     GoRoute(
-//       path: '/',
-//       builder: (context, state) => const Scaffold(
-//         body: Center(
-//           child: Text('Fashion Room Girls'),
-//         ),
-//       ),
-//     ),
-//   ],
-// );
-
-final GoRouter appRouter = GoRouter(
-  initialLocation: '/',
-  routes: <RouteBase>[
+final appRouter = GoRouter(
+  initialLocation: '/room', // opens room directly for now
+  routes: [
     GoRoute(
       path: '/',
       // ra exemple hta n9ado scren d'aceuille htit login hna
@@ -28,5 +16,6 @@ final GoRouter appRouter = GoRouter(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
     ),
+    GoRoute(path: '/room', builder: (context, state) => const RoomScreen()),
   ],
 );
