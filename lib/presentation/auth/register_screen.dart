@@ -108,21 +108,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             // button register
                             child: ElevatedButton(
                               onPressed: () async {
+                                final nickname = _nicknameController.text.trim();
+                                final email = _emailController.text.trim();
+                                final password = _passwordController.text.trim();
+
+                                if (nickname.isEmpty || email.isEmpty || password.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Please fill in all fields.')),
+                                  );
+                                  return;
+                                }
+
                                 try {
-                                  UserCredential userCredential =
-                                      await FirebaseAuth.instance
-                                          .createUserWithEmailAndPassword(
-                                            email: _emailController.text.trim(),
-                                            password: _passwordController.text
-                                                .trim(),
-                                          );
-                                  print(
-                                    "Compte créé ! ID du joueur à donner à l'équipe :${userCredential.user!.uid}",
+                                  final userCredential =
+                                      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                                    email: email,
+                                    password: password,
                                   );
+                                  // ✅ Save nickname to Firebase Auth profile
+                                  await userCredential.user!.updateProfile(displayName: nickname);
+                                  // ✅ Navigate to menu after registration
+                                  if (context.mounted) context.go('/menu');
                                 } on FirebaseAuthException catch (e) {
-                                  print(
-                                    'Erreur Firebase : ${e.message} + ${_emailController.text}',
-                                  );
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(e.message ?? 'Registration failed.')),
+                                    );
+                                  }
                                 }
                               },
                               style: ElevatedButton.styleFrom(

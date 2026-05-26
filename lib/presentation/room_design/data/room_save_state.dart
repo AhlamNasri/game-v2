@@ -33,7 +33,7 @@ class RoomSaveState {
       ),
     ],
     activeRoomIndex: 0,
-    coins: 0,
+    coins: 2500,
     playerLevel: 5,
   );
 
