@@ -69,7 +69,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _restorePreferredOrientations() {
-    return SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    return _lockLandscapeOrientation();
   }
 
   @override
@@ -268,10 +268,12 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     if (state == null) return;
 
     final itemWidth = defaultRoomItemWidth(inventoryItem.id);
-    final stageWidth =
-        _stageSize.width == 0 ? box.size.width : _stageSize.width;
-    final stageHeight =
-        _stageSize.height == 0 ? box.size.height : _stageSize.height;
+    final stageWidth = _stageSize.width == 0
+        ? box.size.width
+        : _stageSize.width;
+    final stageHeight = _stageSize.height == 0
+        ? box.size.height
+        : _stageSize.height;
     final maxX = (stageWidth - itemWidth).clamp(0, double.infinity).toDouble();
     final maxY = (stageHeight - itemWidth).clamp(0, double.infinity).toDouble();
 
@@ -314,8 +316,9 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       final index = ordered.indexOf(item);
       if (index == -1) return;
 
-      final targetIndex =
-          (index + direction).clamp(0, ordered.length - 1).toInt();
+      final targetIndex = (index + direction)
+          .clamp(0, ordered.length - 1)
+          .toInt();
       if (targetIndex == index) return;
 
       final other = ordered[targetIndex];

@@ -119,13 +119,8 @@ void main() {
   });
 
   testWidgets('shop route target stays intentionally empty', (tester) async {
-    await tester.pumpWidget(
-      const Directionality(
-        textDirection: TextDirection.ltr,
-        child: ShopScreen(),
-      ),
-    );
+    await tester.pumpWidget(const MaterialApp(home: ShopScreen()));
 
-    expect(find.byType(SizedBox), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
   });
 }

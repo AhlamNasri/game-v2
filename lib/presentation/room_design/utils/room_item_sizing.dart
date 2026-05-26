@@ -8,7 +8,6 @@ double defaultRoomItemWidth(String id) {
     case 'sofa3':
       return 220;
     case 'bath2':
-    case 'bureau':
     case 'shelf':
       return 170;
     case 'chair':
