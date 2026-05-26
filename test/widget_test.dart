@@ -1,30 +1,131 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:fashion_room_girls/presentation/room_design/models/room_definition.dart';
+import 'package:fashion_room_girls/presentation/room_design/widgets/inventory_drawer.dart';
+import 'package:fashion_room_girls/presentation/room_design/widgets/top_menu_drawer.dart';
+import 'package:fashion_room_girls/presentation/shop/shop_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fashion_room_girls/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('top menu drawer renders controls without overflowing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SafeArea(
+            child: TopMenuDrawer(
+              visible: true,
+              coins: 0,
+              rooms: [
+                RoomDefinition(
+                  id: 'room_1',
+                  name: 'Guest Room',
+                  background: 'room_assets/room_bg.jpeg',
+                  placedItems: const [],
+                ),
+              ],
+              activeRoomIndex: 0,
+              playerName: 'Tester',
+              playerLevel: 5,
+              saving: false,
+              inventoryVisible: false,
+              onToggleMenu: () {},
+              onBack: () {},
+              onGoToCloset: () {},
+              onCompetitionMode: () {},
+              onSettings: () {},
+              onRoomSelected: (_) {},
+              onUnlockSecondRoom: () {},
+              onToggleInventory: () {},
+            ),
+          ),
+        ),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.byTooltip('Hide menu'), findsOneWidget);
+    expect(find.byTooltip('Show inventory'), findsOneWidget);
+    expect(find.byTooltip('Go to Closet'), findsOneWidget);
+    expect(find.byTooltip('Competition Mode'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('inventory drawer renders as an overlay panel', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              const Positioned.fill(child: ColoredBox(color: Colors.white)),
+              SafeArea(
+                child: InventoryDrawer(
+                  visible: true,
+                  inventory: const [],
+                  onShopPressed: () {},
+                  onClose: () {},
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byTooltip('Go Shop'), findsOneWidget);
+    expect(find.byTooltip('Hide inventory'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('profile badge hides while inventory drawer is open', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SafeArea(
+            child: TopMenuDrawer(
+              visible: false,
+              coins: 0,
+              rooms: [
+                RoomDefinition(
+                  id: 'room_1',
+                  name: 'Guest Room',
+                  background: 'room_assets/room_bg.jpeg',
+                  placedItems: const [],
+                ),
+              ],
+              activeRoomIndex: 0,
+              playerName: 'Tester',
+              playerLevel: 5,
+              saving: false,
+              inventoryVisible: true,
+              onToggleMenu: () {},
+              onBack: () {},
+              onGoToCloset: () {},
+              onCompetitionMode: () {},
+              onSettings: () {},
+              onRoomSelected: (_) {},
+              onUnlockSecondRoom: () {},
+              onToggleInventory: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(ProfileBadge), findsNothing);
+    expect(find.byTooltip('Open menu'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shop route target stays intentionally empty', (tester) async {
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: ShopScreen(),
+      ),
+    );
+
+    expect(find.byType(SizedBox), findsOneWidget);
   });
 }

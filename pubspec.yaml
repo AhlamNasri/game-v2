@@ -68,7 +68,7 @@ flutter:
   assets:
      - room_assets/
      - room_items_shop/
-      - assets/login/
+     - assets/login/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
