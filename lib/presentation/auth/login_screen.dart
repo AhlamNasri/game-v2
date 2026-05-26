@@ -114,9 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                             password: _passwordController.text
                                                 .trim(),
                                           );
-                                  print(
-                                    "Succès ! L'utilisateur est connecté :${userCredential.user!.uid}",
-                                  );
+                                 print("Succès ! L'utilisateur est connecté :${userCredential.user!.uid}");
+                                  if (context.mounted) context.go('/menu');
+
                                 } on FirebaseAuthException catch (e) {
                                   print("Échec de la connexion...");
                                   if (e.code == 'user-not-found') {
@@ -265,9 +265,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       UserCredential userCredential =
                                           await FirebaseAuth.instance
                                               .signInWithCredential(credential);
-                                      print(
-                                        "Connecté avec succès à Firebase : ${userCredential.user!.uid}",
-                                      );
+                                      print("Connecté avec succès à Firebase : ${userCredential.user!.uid}");
+                                      if (context.mounted) context.go('/menu');
                                     }
                                   } on FirebaseException catch (e) {
                                     print("Erreur : $e");
@@ -289,9 +288,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     UserCredential userCredential =
                                         await FirebaseAuth.instance
                                             .signInAnonymously();
-                                    print(
-                                      "Connecté en tant qu'invité ! UID : ${userCredential.user!.uid}",
-                                    );
+                                    print("Connecté en tant qu'invité ! UID : ${userCredential.user!.uid}");
+                                      if (context.mounted) context.go('/menu');
                                   } on FirebaseAuthException catch (e) {
                                     print(
                                       "Erreur de connexion anonyme : ${e.message}",
