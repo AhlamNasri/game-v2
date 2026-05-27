@@ -223,14 +223,14 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     super.initState();
     unawaited(_lockLandscapeOrientation());
     WidgetsBinding.instance.addObserver(this);
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
-      user,
-    ) async {
-      if (user == null && _saveState?.userId != 'guest') {
-        await _saveRoom(silent: true);
-      }
-      await _loadData();
-    });
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
+      (user) async {
+        if (user == null && _saveState?.userId != 'guest') {
+          await _saveRoom(silent: true);
+        }
+        await _loadData();
+      },
+    );
     unawaited(_loadData());
   }
 
@@ -276,6 +276,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _saveRoom({bool silent = false}) async {
+    // Always capture _saveState at call time so we save the latest version
     final state = _saveState;
     if (state == null) return;
 
@@ -327,6 +328,17 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         backgroundColor: const Color(0xFF7E3565),
       ),
     );
+  }
+
+  /// Replaces the active room with [updatedRoom] and returns the new full
+  /// save state. Does NOT call setState — callers do that.
+  RoomSaveState _withUpdatedActiveRoom(
+    RoomSaveState state,
+    RoomDefinition updatedRoom,
+  ) {
+    final updatedRooms = List<RoomDefinition>.of(state.rooms);
+    updatedRooms[state.activeRoomIndex] = updatedRoom;
+    return state.copyWith(rooms: updatedRooms);
   }
 
   Future<void> _unlockSecondRoom() async {
@@ -387,13 +399,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         1;
   }
 
-  void _normalizeLayerOrder(List<RoomItem> items) {
-    final ordered = List<RoomItem>.of(items)..sort(_compareLayerOrder);
-    for (var index = 0; index < ordered.length; index++) {
-      ordered[index].layer = index;
-    }
-  }
-
   int _compareLayerOrder(RoomItem a, RoomItem b) {
     final layerCompare = a.layer.compareTo(b.layer);
     if (layerCompare != 0) return layerCompare;
@@ -414,85 +419,154 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     if (state == null) return;
 
     final itemWidth = defaultRoomItemWidth(inventoryItem.id);
-    final stageWidth = _stageSize.width == 0
-        ? box.size.width
-        : _stageSize.width;
-    final stageHeight = _stageSize.height == 0
-        ? box.size.height
-        : _stageSize.height;
+    final stageWidth =
+        _stageSize.width == 0 ? box.size.width : _stageSize.width;
+    final stageHeight =
+        _stageSize.height == 0 ? box.size.height : _stageSize.height;
     final maxX = (stageWidth - itemWidth).clamp(0, double.infinity).toDouble();
     final maxY = (stageHeight - itemWidth).clamp(0, double.infinity).toDouble();
 
+    final newItem = RoomItem(
+      name: inventoryItem.name,
+      asset: inventoryItem.asset,
+      x: (sceneOffset.dx - itemWidth / 2).clamp(0, maxX).toDouble(),
+      y: (sceneOffset.dy - itemWidth / 2).clamp(0, maxY).toDouble(),
+      width: itemWidth,
+      layer: _nextLayer(),
+    );
+
+    // Build an entirely new RoomDefinition — no mutation of existing lists
+    final updatedRoom = RoomDefinition(
+      id: _activeRoom.id,
+      name: _activeRoom.name,
+      background: _activeRoom.background,
+      placedItems: [..._activeRoom.placedItems, newItem],
+    );
+
     setState(() {
+      _saveState = _withUpdatedActiveRoom(state, updatedRoom);
       _selectedItem = null;
-      _activeRoom.placedItems.add(
-        RoomItem(
-          name: inventoryItem.name,
-          asset: inventoryItem.asset,
-          x: (sceneOffset.dx - itemWidth / 2).clamp(0, maxX).toDouble(),
-          y: (sceneOffset.dy - itemWidth / 2).clamp(0, maxY).toDouble(),
-          width: itemWidth,
-          layer: _nextLayer(),
-        ),
-      );
-      _saveState = state.copyWith(rooms: [...state.rooms]);
     });
-    unawaited(_saveRoom(silent: true));
+    _queueAutoSave();
   }
 
   void _rotateItem(RoomItem item) {
     final state = _saveState;
     if (state == null) return;
+
+    // Replace the matching item with a rotated copy — no mutation
+    final updatedItems = _activeRoom.placedItems.map((i) {
+      if (i == item) {
+        return RoomItem(
+          name: i.name,
+          asset: i.asset,
+          x: i.x,
+          y: i.y,
+          width: i.width,
+          rotation: _normalizeRotation(i.rotation + math.pi / 12),
+          layer: i.layer,
+        );
+      }
+      return i;
+    }).toList();
+
+    final updatedRoom = RoomDefinition(
+      id: _activeRoom.id,
+      name: _activeRoom.name,
+      background: _activeRoom.background,
+      placedItems: updatedItems,
+    );
+
     setState(() {
-      _selectedItem = item;
-      item.rotation = _normalizeRotation(item.rotation + math.pi / 12);
-      _saveState = state.copyWith(rooms: [...state.rooms]);
+      _saveState = _withUpdatedActiveRoom(state, updatedRoom);
+      // Keep the rotated copy selected
+      _selectedItem = updatedItems.firstWhere(
+        (i) => i.asset == item.asset && i.x == item.x && i.y == item.y,
+        orElse: () => updatedItems.last,
+      );
     });
-    unawaited(_saveRoom(silent: true));
+    _queueAutoSave();
   }
 
   void _changeItemLayer(RoomItem item, int direction) {
     final state = _saveState;
     if (state == null || _activeRoom.placedItems.length < 2) return;
 
+    // Work on a copy, normalize, then swap layers
+    final items = _activeRoom.placedItems.map((i) => RoomItem(
+      name: i.name, asset: i.asset, x: i.x, y: i.y,
+      width: i.width, rotation: i.rotation, layer: i.layer,
+    )).toList();
+
+    // Normalize layer order on the copies
+    final ordered = List<RoomItem>.of(items)..sort(_compareLayerOrder);
+    for (var idx = 0; idx < ordered.length; idx++) {
+      ordered[idx].layer = idx;
+    }
+
+    final index = ordered.indexWhere(
+      (i) => i.asset == item.asset && i.x == item.x && i.y == item.y,
+    );
+    if (index == -1) return;
+
+    final targetIndex = (index + direction).clamp(0, ordered.length - 1).toInt();
+    if (targetIndex == index) return;
+
+    final other = ordered[targetIndex];
+    final layer = ordered[index].layer;
+    ordered[index].layer = other.layer;
+    other.layer = layer;
+
+    final updatedRoom = RoomDefinition(
+      id: _activeRoom.id,
+      name: _activeRoom.name,
+      background: _activeRoom.background,
+      placedItems: items,
+    );
+
     setState(() {
-      _normalizeLayerOrder(_activeRoom.placedItems);
-      final ordered = List<RoomItem>.of(_activeRoom.placedItems)
-        ..sort((a, b) => a.layer.compareTo(b.layer));
-      final index = ordered.indexOf(item);
-      if (index == -1) return;
-
-      final targetIndex = (index + direction)
-          .clamp(0, ordered.length - 1)
-          .toInt();
-      if (targetIndex == index) return;
-
-      final other = ordered[targetIndex];
-      final layer = item.layer;
-      item.layer = other.layer;
-      other.layer = layer;
-      _selectedItem = item;
-      _saveState = state.copyWith(rooms: [...state.rooms]);
+      _saveState = _withUpdatedActiveRoom(state, updatedRoom);
+      _selectedItem = ordered[index];
     });
-    unawaited(_saveRoom(silent: true));
+    _queueAutoSave();
   }
 
   void _removeItem(RoomItem item) {
     final state = _saveState;
     if (state == null) return;
+
+    final updatedRoom = RoomDefinition(
+      id: _activeRoom.id,
+      name: _activeRoom.name,
+      background: _activeRoom.background,
+      placedItems: _activeRoom.placedItems.where((i) => i != item).toList(),
+    );
+
     setState(() {
-      _activeRoom.placedItems.remove(item);
+      _saveState = _withUpdatedActiveRoom(state, updatedRoom);
       _selectedItem = null;
-      _saveState = state.copyWith(rooms: [...state.rooms]);
     });
-    unawaited(_saveRoom(silent: true));
+    _queueAutoSave();
   }
 
+  /// Called by RoomStage when an item is dragged (position mutated in-place
+  /// by the stage widget). We rebuild the state so _saveState reflects the
+  /// latest positions before the autosave fires.
   void _markRoomChanged() {
     final state = _saveState;
     if (state == null) return;
+
+    // Copy current items (with their already-mutated x/y from the stage)
+    // into a fresh RoomDefinition so toMap() captures the latest positions.
+    final updatedRoom = RoomDefinition(
+      id: _activeRoom.id,
+      name: _activeRoom.name,
+      background: _activeRoom.background,
+      placedItems: List<RoomItem>.of(_activeRoom.placedItems),
+    );
+
     setState(() {
-      _saveState = state.copyWith(rooms: [...state.rooms]);
+      _saveState = _withUpdatedActiveRoom(state, updatedRoom);
     });
   }
 
@@ -513,6 +587,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     context.go('/dress-up');
   }
 
+<<<<<<< HEAD
   Future<void> _openCompetitionMode() async {
     final User? currentUser = FirebaseAuth.instance.currentUser;
 
@@ -530,6 +605,10 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
 
     // 2. Si on arrive ici, l'utilisateur a un VRAI compte officiel.
     // On peut afficher l'indicateur de chargement visuel pour le matchmaking.
+=======
+ Future<void> _openCompetitionMode() async {
+    // _showMessage('Competition Mode coming soon');
+>>>>>>> upstream/develop
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -537,6 +616,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     );
 
     try {
+<<<<<<< HEAD
       // 3. On récupère les infos locales ou par défaut depuis SharedPreferences
       final SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -544,11 +624,35 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       String myUid = currentUser.uid;
 
       // Récupération du pseudo, de l'avatar et du niveau sauvegardés localement
+=======
+      // 2. On récupère les infos locales ou par défaut depuis SharedPreferences
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+      // Récupération de l'ID utilisateur (Firebase Auth ou SharedPreferences)
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      String myUid =
+          currentUser?.uid ?? prefs.getString('uid') ?? "uid_inconnu";
+
+      // Récupération du pseudo et de l'avatar sauvegardés localement
+>>>>>>> upstream/develop
       String myNickname = prefs.getString('user_nickname') ?? "Joueur";
       String myAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
-      int myLevel = prefs.getInt('user_level') ?? 1;
+      int myLevel =
+          prefs.getInt('user_level') ??
+          1; // Niveau dynamique (ou laisse 1 par défaut)
 
+<<<<<<< HEAD
       // 4. Appel du service de matchmaking avec la structure complète 📦
+=======
+      // 🚨 Si l'utilisateur n'est pas connecté du tout sur Firebase, on le redirige vers le login d'abord
+      if (currentUser == null) {
+        if (context.mounted) Navigator.pop(context); // Ferme le loader
+        if (context.mounted) context.push('/login?roomId=none');
+        return;
+      }
+
+      // 3. Appel du service de matchmaking avec la nouvelle structure complète 📦
+>>>>>>> upstream/develop
       String roomId = await LobbyService().findOrCreateLobby(
         currentUserId: myUid,
         currentUserNickname: myNickname,
@@ -556,6 +660,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         userLevel: myLevel,
       );
 
+<<<<<<< HEAD
       // 5. On ferme le dialogue de chargement dès que la salle est trouvée/créée
       if (context.mounted) {
         Navigator.pop(context);
@@ -563,7 +668,15 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
 
       // 6. Direction le Lobby en direct ! 🚀
       print("Profil officiel injecté -> Direction le Lobby : $roomId");
+=======
+      // 4. On ferme le dialogue de chargement
+      if (context.mounted) Navigator.pop(context);
+
+      // 5. Direction le Lobby direct ! 🚀
+      print("Profil complet injecté -> Direction le Lobby : $roomId");
+>>>>>>> upstream/develop
       if (context.mounted) {
+        // Note : Utilise widget.lobbyId dans ton LobbyScreen pour lire la variable roomId passée ici
         context.push('/lobby?roomId=$roomId');
       }
     } catch (error) {
@@ -650,7 +763,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // RoomStage owns the background — no duplicate layer here
           Positioned.fill(child: _buildRoomStage()),
           Positioned.fill(child: _buildRoomHud()),
         ],
