@@ -324,6 +324,16 @@ class _MenuLayout extends StatelessWidget {
                   h: h,
                   onPressed: onCloset,
                 ),
+                SizedBox(height: (h * 0.022).clamp(6.0, 14.0)),
+                _NavButton(
+                  label: 'Go Shopping',
+                  icon: Icons.shopping_bag_outlined,
+                  accent: const Color(0xFF7B8BFF),
+                  h: h,
+                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Boutique à venir !')),
+                  ),
+                ),
               ],
             ),
           ),
