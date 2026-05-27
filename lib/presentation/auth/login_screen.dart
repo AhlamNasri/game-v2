@@ -136,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         //context.go('/lobby?roomId=${widget.roomId}');
-        context.go('/menu');
+        context.go('/room');
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
@@ -284,7 +284,8 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         if (mounted) {
-          context.go('/lobby?roomId=${widget.roomId}');
+          //context.go('/lobby?roomId=${widget.roomId}');
+          context.go('/room');
         }
       }
     } on FirebaseAuthException catch (e) {
