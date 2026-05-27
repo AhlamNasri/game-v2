@@ -17,20 +17,20 @@ class RoomItem {
   });
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'asset': asset,
-        'x': x,
-        'y': y,
-        'width': width,
-      };
+    'name': name,
+    'asset': asset,
+    'x': x,
+    'y': y,
+    'width': width,
+  };
 
   factory RoomItem.fromMap(Map<String, dynamic> map) => RoomItem(
-        name: map['name'],
-        asset: map['asset'],
-        x: (map['x'] as num).toDouble(),
-        y: (map['y'] as num).toDouble(),
-        width: (map['width'] as num).toDouble(),
-      );
+    name: map['name'],
+    asset: map['asset'],
+    x: (map['x'] as num).toDouble(),
+    y: (map['y'] as num).toDouble(),
+    width: (map['width'] as num).toDouble(),
+  );
 }
 
 /// Returns the full asset path for an item name.
@@ -87,12 +87,12 @@ class _AnyExtensionImage extends StatelessWidget {
   }
 
   Widget _placeholder() => SizedBox(
-        width: width,
-        height: width,
-        child: const Center(
-          child: Icon(Icons.broken_image_outlined, color: Colors.grey),
-        ),
-      );
+    width: width,
+    height: width,
+    child: const Center(
+      child: Icon(Icons.broken_image_outlined, color: Colors.grey),
+    ),
+  );
 }
 
 /// Tries [extensions] one by one, falling through on asset-load errors.
@@ -181,9 +181,9 @@ class _RoomScreenState extends State<RoomScreen> {
   Future<void> _saveRoom() async {
     await _roomService.saveRoom(placedItems.map((e) => e.toMap()).toList());
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Room saved! 🎀')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Room saved! 🎀')));
   }
 
   double _getItemWidth(String itemName) {
@@ -192,15 +192,24 @@ class _RoomScreenState extends State<RoomScreen> {
         ? itemName.substring(0, itemName.lastIndexOf('.'))
         : itemName;
     switch (base) {
-      case 'bed':     return 200;
-      case 'sofa':    return 220;
-      case 'chair':   return 100;
-      case 'lamp':    return 90;
-      case 'plant':   return 90;
-      case 'clock':   return 70;
-      case 'tableau': return 110;
-      case 'deco':   return 80;
-      default:        return 120;
+      case 'bed':
+        return 200;
+      case 'sofa':
+        return 220;
+      case 'chair':
+        return 100;
+      case 'lamp':
+        return 90;
+      case 'plant':
+        return 90;
+      case 'clock':
+        return 70;
+      case 'tableau':
+        return 110;
+      case 'deco':
+        return 80;
+      default:
+        return 120;
     }
   }
 
@@ -214,9 +223,7 @@ class _RoomScreenState extends State<RoomScreen> {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -259,10 +266,7 @@ class _RoomScreenState extends State<RoomScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Column(
                             children: [
-                              _AnyExtensionImage(
-                                itemName: itemName,
-                                width: 70,
-                              ),
+                              _AnyExtensionImage(itemName: itemName, width: 70),
                               Text(
                                 itemName,
                                 style: const TextStyle(fontSize: 9),
@@ -287,13 +291,15 @@ class _RoomScreenState extends State<RoomScreen> {
                 final localOffset = box.globalToLocal(details.offset);
                 setState(() {
                   _selectedItem = null;
-                  placedItems.add(RoomItem(
-                    name: details.data,
-                    asset: _assetPathFor(details.data),
-                    x: localOffset.dx - 90,
-                    y: localOffset.dy,
-                    width: _getItemWidth(details.data),
-                  ));
+                  placedItems.add(
+                    RoomItem(
+                      name: details.data,
+                      asset: _assetPathFor(details.data),
+                      x: localOffset.dx - 90,
+                      y: localOffset.dy,
+                      width: _getItemWidth(details.data),
+                    ),
+                  );
                 });
               },
               builder: (context, candidate, rejected) {
@@ -364,8 +370,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                           color: Colors.pink,
                                           width: 2,
                                         ),
-                                        borderRadius:
-                                            BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(8),
                                       )
                                     : null,
                                 // Use the stored asset path directly —
@@ -375,9 +380,9 @@ class _RoomScreenState extends State<RoomScreen> {
                                   width: item.width,
                                   errorBuilder: (_, __, ___) =>
                                       _AnyExtensionImage(
-                                    itemName: item.name,
-                                    width: item.width,
-                                  ),
+                                        itemName: item.name,
+                                        width: item.width,
+                                      ),
                                 ),
                               ),
                             ),

@@ -1,3 +1,4 @@
+import 'package:fashion_room_girls/data/services/user_service.dart';
 import 'package:fashion_room_girls/router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -6,36 +7,33 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 2. On injecte tes clés Web manuellement pour tes tests
-  // await Firebase.initializeApp(
-  //   options: const FirebaseOptions(
-  //     apiKey: "AIzaSyA48hqd7mb2bNLqnFpsBHe0ZvAEslSniUs",
-  //     authDomain: "test-poupee-fashion-game.firebaseapp.com",
-  //     projectId: "test-poupee-fashion-game",
-  //     storageBucket: "test-poupee-fashion-game.firebasestorage.app",
-  //     messagingSenderId: "446347040413",
-  //     appId: "1:446347040413:web:94ea952f4fe780f131e674",
-  //     measurementId: "G-YQ6ZNZM1KN",
-  //   ),
-  // );
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const ProviderScope(child: MyApp()));
+  UserService userService = UserService();
+  Map<String, String?> localUser = await userService.getLocalUser();
+
+  // 2. Par défaut, s'il n'a pas de profil, on l'envoie sur le RegisterScreen (pour choisir pseudo/avatar)
+  String targetRoute = '/first';
+
+  if (localUser['uid'] != null) {
+    // L'enfant a déjà créé sa poupée ! On l'envoie directement dans sa Chambre (RoomScreen)
+    print("Bienvenue de retour, joueur : ${localUser['nickname']}");
+    targetRoute = '/test';
+  }
+  runApp(ProviderScope(child: MyApp(initialRoute: targetRoute)));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String initialRoute;
+
+  const MyApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Fashion Room Girls',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink),
-        useMaterial3: true,
-      ),
+    final router = createAppRouter(initialRoute);
 
-      routerConfig: appRouter,
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      routerConfig: router,
     );
   }
 }
