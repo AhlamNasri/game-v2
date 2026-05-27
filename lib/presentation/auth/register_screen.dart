@@ -85,7 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (mounted) {
-        context.pop();
+        context.go('/menu');
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {

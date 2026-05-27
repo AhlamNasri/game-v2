@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 import 'package:fashion_room_girls/data/services/user_service.dart';
-=======
 import 'package:fashion_room_girls/presentation/room_design/theme/room_ui.dart';
->>>>>>> upstream/develop
 import 'package:fashion_room_girls/router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -12,26 +9,11 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-<<<<<<< HEAD
-=======
   await SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
 
-  // 2. On injecte tes clés Web manuellement pour tes tests
-  // await Firebase.initializeApp(
-  //   options: const FirebaseOptions(
-  //     apiKey: "AIzaSyA48hqd7mb2bNLqnFpsBHe0ZvAEslSniUs",
-  //     authDomain: "test-poupee-fashion-game.firebaseapp.com",
-  //     projectId: "test-poupee-fashion-game",
-  //     storageBucket: "test-poupee-fashion-game.firebasestorage.app",
-  //     messagingSenderId: "446347040413",
-  //     appId: "1:446347040413:web:94ea952f4fe780f131e674",
-  //     measurementId: "G-YQ6ZNZM1KN",
-  //   ),
-  // );
->>>>>>> upstream/develop
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   UserService userService = UserService();
   Map<String, String?> localUser = await userService.getLocalUser();
@@ -42,7 +24,7 @@ void main() async {
   if (localUser['uid'] != null) {
     // L'enfant a déjà créé sa poupée ! On l'envoie directement dans sa Chambre (RoomScreen)
     print("Bienvenue de retour, joueur : ${localUser['nickname']}");
-    targetRoute = '/test';
+    targetRoute = '/room';
   }
   runApp(ProviderScope(child: MyApp(initialRoute: targetRoute)));
 }
@@ -54,13 +36,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
     final router = createAppRouter(initialRoute);
-
-    return MaterialApp.router(
-      debugShowCheckedModeBanner: false,
-      routerConfig: router,
-=======
     final colorScheme = ColorScheme.fromSeed(seedColor: RoomUi.accent).copyWith(
       primary: RoomUi.accent,
       secondary: RoomUi.pillText,
@@ -89,8 +65,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      routerConfig: appRouter,
->>>>>>> upstream/develop
+      routerConfig: router,
     );
   }
 }

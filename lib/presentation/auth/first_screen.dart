@@ -84,7 +84,7 @@ class _RegisterScreenState extends State<FirstScreen> {
       );
 
       if (mounted) {
-        context.go('/test');
+        context.go('/room');
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Bienvenue $nickname !")));

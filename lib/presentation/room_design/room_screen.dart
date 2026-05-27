@@ -1,43 +1,55 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:fashion_room_girls/data/services/lobbyService.dart';
+import 'package:fashion_room_girls/presentation/room_design/data/room_assets.dart';
+import 'package:fashion_room_girls/presentation/room_design/data/room_repository.dart';
+import 'package:fashion_room_girls/presentation/room_design/data/room_save_state.dart';
+import 'package:fashion_room_girls/presentation/room_design/models/inventory_item.dart';
+import 'package:fashion_room_girls/presentation/room_design/models/room_definition.dart';
+import 'package:fashion_room_girls/presentation/room_design/models/room_item.dart';
+import 'package:fashion_room_girls/presentation/room_design/theme/room_ui.dart';
+import 'package:fashion_room_girls/presentation/room_design/utils/room_item_sizing.dart';
+import 'package:fashion_room_girls/presentation/room_design/widgets/inventory_drawer.dart';
+import 'package:fashion_room_girls/presentation/room_design/widgets/room_stage.dart';
+import 'package:fashion_room_girls/presentation/room_design/widgets/top_menu_drawer.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-<<<<<<< HEAD
-class RoomItem {
-  final String name;
-  final String asset; // full filename, e.g. "bed.png", "photo.jpeg", "bg.webp"
-  double x;
-  double y;
-  double width;
+// class RoomItem {
+//   final String name;
+//   final String asset; // full filename, e.g. "bed.png", "photo.jpeg", "bg.webp"
+//   double x;
+//   double y;
+//   double width;
 
-  RoomItem({
-    required this.name,
-    required this.asset,
-    this.x = 100,
-    this.y = 100,
-    this.width = 120,
-  });
+//   RoomItem({
+//     required this.name,
+//     required this.asset,
+//     this.x = 100,
+//     this.y = 100,
+//     this.width = 120,
+//   });
 
-  Map<String, dynamic> toMap() => {
-    'name': name,
-    'asset': asset,
-    'x': x,
-    'y': y,
-    'width': width,
-  };
+//   Map<String, dynamic> toMap() => {
+//     'name': name,
+//     'asset': asset,
+//     'x': x,
+//     'y': y,
+//     'width': width,
+//   };
 
-  factory RoomItem.fromMap(Map<String, dynamic> map) => RoomItem(
-    name: map['name'],
-    asset: map['asset'],
-    x: (map['x'] as num).toDouble(),
-    y: (map['y'] as num).toDouble(),
-    width: (map['width'] as num).toDouble(),
-  );
-}
+//   factory RoomItem.fromMap(Map<String, dynamic> map) => RoomItem(
+//     name: map['name'],
+//     asset: map['asset'],
+//     x: (map['x'] as num).toDouble(),
+//     y: (map['y'] as num).toDouble(),
+//     width: (map['width'] as num).toDouble(),
+//   );
+// }
 
 /// Returns the full asset path for an item name.
 /// It checks a priority list of extensions and falls back to the
@@ -151,19 +163,6 @@ class _FallbackImageState extends State<_FallbackImage> {
 }
 
 // ---------------------------------------------------------------------------
-=======
-import 'data/room_assets.dart';
-import 'data/room_repository.dart';
-import 'data/room_save_state.dart';
-import 'models/inventory_item.dart';
-import 'models/room_definition.dart';
-import 'models/room_item.dart';
-import 'theme/room_ui.dart';
-import 'utils/room_item_sizing.dart';
-import 'widgets/inventory_drawer.dart';
-import 'widgets/room_stage.dart';
-import 'widgets/top_menu_drawer.dart';
->>>>>>> upstream/develop
 
 class RoomScreen extends StatefulWidget {
   const RoomScreen({super.key});
@@ -232,56 +231,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       }
       await _loadData();
     });
-<<<<<<< HEAD
-  }
-
-  Future<void> _saveRoom() async {
-    await _roomService.saveRoom(placedItems.map((e) => e.toMap()).toList());
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Room saved! 🎀')));
-  }
-
-  double _getItemWidth(String itemName) {
-    // Strip extension for the size-lookup so "bed.jpeg" and "bed" both work.
-    final base = itemName.contains('.')
-        ? itemName.substring(0, itemName.lastIndexOf('.'))
-        : itemName;
-    switch (base) {
-      case 'bed':
-        return 200;
-      case 'sofa':
-        return 220;
-      case 'chair':
-        return 100;
-      case 'lamp':
-        return 90;
-      case 'plant':
-        return 90;
-      case 'clock':
-        return 70;
-      case 'tableau':
-        return 110;
-      case 'deco':
-        return 80;
-      default:
-        return 120;
-    }
-  }
-
-  /// Derives the asset path to store on a newly placed RoomItem.
-  /// Inventory entries may be bare names ("bed") or full filenames ("bed.jpeg").
-  String _assetPathFor(String itemName) {
-    if (itemName.contains('.')) return 'room_assets/$itemName';
-    return 'room_assets/$itemName.png'; // will be resolved at display time
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-=======
     unawaited(_loadData());
   }
 
@@ -337,7 +286,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         setState(() => _saving = true);
       }
       return;
->>>>>>> upstream/develop
     }
 
     _saveInFlight = true;
@@ -565,8 +513,119 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     context.go('/dress-up');
   }
 
-  void _openCompetitionMode() {
-    _showMessage('Competition Mode coming soon');
+  // Future<void> _openCompetitionMode() async {
+  //   // _showMessage('Competition Mode coming soon');
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (context) => const Center(child: CircularProgressIndicator()),
+  //   );
+
+  //   try {
+  //     // 2. On récupère les infos locales ou par défaut depuis SharedPreferences
+  //     final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  //     // Récupération de l'ID utilisateur (Firebase Auth ou SharedPreferences)
+  //     final User? currentUser = FirebaseAuth.instance.currentUser;
+  //     String myUid =
+  //         currentUser?.uid ?? prefs.getString('uid') ?? "uid_inconnu";
+
+  //     // Récupération du pseudo et de l'avatar sauvegardés localement
+  //     String myNickname = prefs.getString('user_nickname') ?? "Joueur";
+  //     String myAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
+  //     int myLevel =
+  //         prefs.getInt('user_level') ??
+  //         1; // Niveau dynamique (ou laisse 1 par défaut)
+
+  //     // 🚨 Si l'utilisateur n'est pas connecté du tout sur Firebase, on le redirige vers le login d'abord
+  //     if (currentUser == null) {
+  //       if (context.mounted) Navigator.pop(context); // Ferme le loader
+  //       if (context.mounted) context.push('/login?roomId=none');
+  //       return;
+  //     }
+
+  //     // 3. Appel du service de matchmaking avec la nouvelle structure complète 📦
+  //     String roomId = await LobbyService().findOrCreateLobby(
+  //       currentUserId: myUid,
+  //       currentUserNickname: myNickname,
+  //       currentUserAvatarId: myAvatarId,
+  //       userLevel: myLevel,
+  //     );
+
+  //     // 4. On ferme le dialogue de chargement
+  //     if (context.mounted) Navigator.pop(context);
+
+  //     // 5. Direction le Lobby direct ! 🚀
+  //     print("Profil complet injecté -> Direction le Lobby : $roomId");
+  //     if (context.mounted) {
+  //       // Note : Utilise widget.lobbyId dans ton LobbyScreen pour lire la variable roomId passée ici
+  //       context.push('/lobby?roomId=$roomId');
+  //     }
+  //   } catch (error) {
+  //     // Fermer le chargement en cas de crash
+  //     if (context.mounted) Navigator.pop(context);
+  //     if (context.mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text("Impossible de trouver une salle : $error")),
+  //       );
+  //     }
+  //   }
+  // }
+
+  Future<void> _openCompetitionMode() async {
+    // 1. 🚨 ON VÉRIFIE D'ABORD LA CONNEXION (Avant d'ouvrir le loader ou SharedPreferences)
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      if (context.mounted) {
+        // Redirection directe vers le login s'il est guest
+        context.push('/login?roomId=none');
+      }
+      return; // On arrête la fonction ici !
+    }
+
+    // 2. Si l'utilisateur est connecté, ALORS on affiche le loader de matchmaking
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // 3. On récupère les infos locales depuis SharedPreferences
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+      String myUid =
+          currentUser.uid; // Plus besoin du "??", on est sûr qu'il est connecté
+      String myNickname = prefs.getString('user_nickname') ?? "Joueur";
+      String myAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
+      int myLevel = prefs.getInt('user_level') ?? 1;
+
+      // 4. Appel du service de matchmaking 📦
+      String roomId = await LobbyService().findOrCreateLobby(
+        currentUserId: myUid,
+        currentUserNickname: myNickname,
+        currentUserAvatarId: myAvatarId,
+        userLevel: myLevel,
+      );
+
+      // 5. On ferme le dialogue de chargement
+      if (context.mounted) Navigator.pop(context);
+
+      // 6. Direction le Lobby direct ! 🚀
+      print("Profil complet injecté -> Direction le Lobby : $roomId");
+      if (context.mounted) {
+        context.push('/lobby?roomId=$roomId');
+      }
+    } catch (error) {
+      // Fermer le chargement en cas de crash
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Impossible de trouver une salle : $error")),
+        );
+      }
+    }
   }
 
   Widget _buildRoomStage() {
@@ -595,202 +654,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       minimum: const EdgeInsets.all(8),
       child: Stack(
         children: [
-<<<<<<< HEAD
-          // LEFT: vertical inventory panel
-          Container(
-            width: 90,
-            color: Colors.pink[50],
-            child: Column(
-              children: [
-                const SizedBox(height: 40),
-                const Text(
-                  'Items',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.pink,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: inventory.length,
-                    itemBuilder: (context, index) {
-                      final itemName = inventory[index];
-                      return Draggable<String>(
-                        data: itemName,
-                        feedback: _AnyExtensionImage(
-                          itemName: itemName,
-                          width: 80,
-                        ),
-                        childWhenDragging: Opacity(
-                          opacity: 0.3,
-                          child: _AnyExtensionImage(
-                            itemName: itemName,
-                            width: 70,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Column(
-                            children: [
-                              _AnyExtensionImage(itemName: itemName, width: 70),
-                              Text(
-                                itemName,
-                                style: const TextStyle(fontSize: 9),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // RIGHT: room canvas
-          Expanded(
-            child: DragTarget<String>(
-              onAcceptWithDetails: (details) {
-                final box = context.findRenderObject() as RenderBox;
-                final localOffset = box.globalToLocal(details.offset);
-                setState(() {
-                  _selectedItem = null;
-                  placedItems.add(
-                    RoomItem(
-                      name: details.data,
-                      asset: _assetPathFor(details.data),
-                      x: localOffset.dx - 90,
-                      y: localOffset.dy,
-                      width: _getItemWidth(details.data),
-                    ),
-                  );
-                });
-              },
-              builder: (context, candidate, rejected) {
-                return Stack(
-                  children: [
-                    // Background — tap to deselect
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedItem = null;
-                        });
-                      },
-                      child: Image.asset(
-                        'room_assets/room_bg.jpeg', // already has extension ✓
-                        fit: BoxFit.fill,
-                        width: double.infinity,
-                        height: double.infinity,
-                      ),
-                    ),
-
-                    // Save button
-                    Positioned(
-                      top: 40,
-                      right: 16,
-                      child: ElevatedButton.icon(
-                        onPressed: _saveRoom,
-                        icon: const Icon(Icons.save),
-                        label: const Text('Save'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.pink[200],
-                        ),
-                      ),
-                    ),
-
-                    // Placed items
-                    ...placedItems.map((item) {
-                      final isSelected = _selectedItem == item;
-                      return Positioned(
-                        left: item.x,
-                        top: item.y,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () {
-                                setState(() {
-                                  _selectedItem = isSelected ? null : item;
-                                });
-                              },
-                              onScaleStart: (_) {
-                                _baseWidth = item.width;
-                              },
-                              onScaleUpdate: (details) {
-                                setState(() {
-                                  item.x += details.focalPointDelta.dx;
-                                  item.y += details.focalPointDelta.dy;
-                                  if (details.pointerCount >= 2) {
-                                    item.width = (_baseWidth * details.scale)
-                                        .clamp(40, 400);
-                                  }
-                                });
-                              },
-                              child: Container(
-                                decoration: isSelected
-                                    ? BoxDecoration(
-                                        border: Border.all(
-                                          color: Colors.pink,
-                                          width: 2,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      )
-                                    : null,
-                                // Use the stored asset path directly —
-                                // it already includes the correct extension.
-                                child: Image.asset(
-                                  item.asset,
-                                  width: item.width,
-                                  errorBuilder: (_, __, ___) =>
-                                      _AnyExtensionImage(
-                                        itemName: item.name,
-                                        width: item.width,
-                                      ),
-                                ),
-                              ),
-                            ),
-
-                            // ❌ delete button
-                            if (isSelected)
-                              Positioned(
-                                top: -14,
-                                right: -14,
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () {
-                                    setState(() {
-                                      placedItems.remove(item);
-                                      _selectedItem = null;
-                                    });
-                                  },
-                                  child: Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
-                );
-              },
-            ),
-=======
           InventoryDrawer(
             visible: _inventoryVisible,
             inventory: _inventory,
@@ -816,14 +679,11 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
             onRoomSelected: _switchRoom,
             onUnlockSecondRoom: _unlockSecondRoom,
             onToggleInventory: _toggleInventory,
->>>>>>> upstream/develop
           ),
         ],
       ),
     );
   }
-<<<<<<< HEAD
-=======
 
   @override
   Widget build(BuildContext context) {
@@ -846,5 +706,4 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       ),
     );
   }
->>>>>>> upstream/develop
 }

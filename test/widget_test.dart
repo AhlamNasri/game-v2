@@ -6,11 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-<<<<<<< HEAD
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp(initialRoute: ''));
-=======
   testWidgets('top menu drawer renders controls without overflowing', (
     tester,
   ) async {
@@ -47,7 +42,6 @@ void main() {
         ),
       ),
     );
->>>>>>> upstream/develop
 
     expect(find.byTooltip('Hide menu'), findsOneWidget);
     expect(find.byTooltip('Show inventory'), findsOneWidget);
