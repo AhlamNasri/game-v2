@@ -24,7 +24,7 @@ void main() async {
   if (localUser['uid'] != null) {
     // L'enfant a déjà créé sa poupée ! On l'envoie directement dans sa Chambre (RoomScreen)
     print("Bienvenue de retour, joueur : ${localUser['nickname']}");
-    targetRoute = '/room';
+    targetRoute = '/menu';
   }
   runApp(ProviderScope(child: MyApp(initialRoute: targetRoute)));
 }
