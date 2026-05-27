@@ -1,22 +1,168 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:fashion_room_girls/data/services/lobbyService.dart';
+import 'package:fashion_room_girls/presentation/room_design/data/room_assets.dart';
+import 'package:fashion_room_girls/presentation/room_design/data/room_repository.dart';
+import 'package:fashion_room_girls/presentation/room_design/data/room_save_state.dart';
+import 'package:fashion_room_girls/presentation/room_design/models/inventory_item.dart';
+import 'package:fashion_room_girls/presentation/room_design/models/room_definition.dart';
+import 'package:fashion_room_girls/presentation/room_design/models/room_item.dart';
+import 'package:fashion_room_girls/presentation/room_design/theme/room_ui.dart';
+import 'package:fashion_room_girls/presentation/room_design/utils/room_item_sizing.dart';
+import 'package:fashion_room_girls/presentation/room_design/widgets/inventory_drawer.dart';
+import 'package:fashion_room_girls/presentation/room_design/widgets/room_stage.dart';
+import 'package:fashion_room_girls/presentation/room_design/widgets/top_menu_drawer.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'data/room_assets.dart';
-import 'data/room_repository.dart';
-import 'data/room_save_state.dart';
-import 'models/inventory_item.dart';
-import 'models/room_definition.dart';
-import 'models/room_item.dart';
-import 'theme/room_ui.dart';
-import 'utils/room_item_sizing.dart';
-import 'widgets/inventory_drawer.dart';
-import 'widgets/room_stage.dart';
-import 'widgets/top_menu_drawer.dart';
+// class RoomItem {
+//   final String name;
+//   final String asset; // full filename, e.g. "bed.png", "photo.jpeg", "bg.webp"
+//   double x;
+//   double y;
+//   double width;
+
+//   RoomItem({
+//     required this.name,
+//     required this.asset,
+//     this.x = 100,
+//     this.y = 100,
+//     this.width = 120,
+//   });
+
+//   Map<String, dynamic> toMap() => {
+//     'name': name,
+//     'asset': asset,
+//     'x': x,
+//     'y': y,
+//     'width': width,
+//   };
+
+//   factory RoomItem.fromMap(Map<String, dynamic> map) => RoomItem(
+//     name: map['name'],
+//     asset: map['asset'],
+//     x: (map['x'] as num).toDouble(),
+//     y: (map['y'] as num).toDouble(),
+//     width: (map['width'] as num).toDouble(),
+//   );
+// }
+
+/// Returns the full asset path for an item name.
+/// It checks a priority list of extensions and falls back to the
+/// name itself if it already contains an extension.
+String _resolveAssetPath(String itemName) {
+  // If the inventory already stores full filenames (e.g. "bed.jpeg"), use as-is.
+  if (itemName.contains('.')) {
+    return 'room_assets/$itemName';
+  }
+  // Otherwise fall back to the extension-priority helper.
+  // At runtime Flutter will throw if the asset doesn't exist, so keep your
+  // pubspec.yaml assets list up-to-date with the actual files.
+  return 'room_assets/$itemName.png'; // default; see _AssetImage below
+}
+
+/// A widget that tries multiple extensions in order and renders the first one
+/// that exists, showing a placeholder on failure.
+class _AnyExtensionImage extends StatelessWidget {
+  final String itemName;
+  final double width;
+  final BoxFit fit;
+
+  const _AnyExtensionImage({
+    required this.itemName,
+    required this.width,
+    this.fit = BoxFit.contain,
+  });
+
+  static const _extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+
+  /// If itemName already carries an extension just use it directly.
+  bool get _hasExtension => itemName.contains('.');
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasExtension) {
+      return Image.asset(
+        'room_assets/$itemName',
+        width: width,
+        fit: fit,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      );
+    }
+
+    // Build a chain of Image.asset widgets, each falling back to the next
+    // extension on error.
+    return _FallbackImage(
+      basePath: 'room_assets/$itemName',
+      extensions: _extensions,
+      width: width,
+      fit: fit,
+    );
+  }
+
+  Widget _placeholder() => SizedBox(
+    width: width,
+    height: width,
+    child: const Center(
+      child: Icon(Icons.broken_image_outlined, color: Colors.grey),
+    ),
+  );
+}
+
+/// Tries [extensions] one by one, falling through on asset-load errors.
+class _FallbackImage extends StatefulWidget {
+  final String basePath;
+  final List<String> extensions;
+  final double width;
+  final BoxFit fit;
+
+  const _FallbackImage({
+    required this.basePath,
+    required this.extensions,
+    required this.width,
+    required this.fit,
+  });
+
+  @override
+  State<_FallbackImage> createState() => _FallbackImageState();
+}
+
+class _FallbackImageState extends State<_FallbackImage> {
+  int _extIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_extIndex >= widget.extensions.length) {
+      return SizedBox(
+        width: widget.width,
+        height: widget.width,
+        child: const Center(
+          child: Icon(Icons.broken_image_outlined, color: Colors.grey),
+        ),
+      );
+    }
+
+    final path = '${widget.basePath}.${widget.extensions[_extIndex]}';
+    return Image.asset(
+      path,
+      width: widget.width,
+      fit: widget.fit,
+      errorBuilder: (_, __, ___) {
+        // Try the next extension on the next frame.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _extIndex++);
+        });
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 class RoomScreen extends StatefulWidget {
   const RoomScreen({super.key});
@@ -367,8 +513,119 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     context.go('/dress-up');
   }
 
-  void _openCompetitionMode() {
-    _showMessage('Competition Mode coming soon');
+  // Future<void> _openCompetitionMode() async {
+  //   // _showMessage('Competition Mode coming soon');
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (context) => const Center(child: CircularProgressIndicator()),
+  //   );
+
+  //   try {
+  //     // 2. On récupère les infos locales ou par défaut depuis SharedPreferences
+  //     final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  //     // Récupération de l'ID utilisateur (Firebase Auth ou SharedPreferences)
+  //     final User? currentUser = FirebaseAuth.instance.currentUser;
+  //     String myUid =
+  //         currentUser?.uid ?? prefs.getString('uid') ?? "uid_inconnu";
+
+  //     // Récupération du pseudo et de l'avatar sauvegardés localement
+  //     String myNickname = prefs.getString('user_nickname') ?? "Joueur";
+  //     String myAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
+  //     int myLevel =
+  //         prefs.getInt('user_level') ??
+  //         1; // Niveau dynamique (ou laisse 1 par défaut)
+
+  //     // 🚨 Si l'utilisateur n'est pas connecté du tout sur Firebase, on le redirige vers le login d'abord
+  //     if (currentUser == null) {
+  //       if (context.mounted) Navigator.pop(context); // Ferme le loader
+  //       if (context.mounted) context.push('/login?roomId=none');
+  //       return;
+  //     }
+
+  //     // 3. Appel du service de matchmaking avec la nouvelle structure complète 📦
+  //     String roomId = await LobbyService().findOrCreateLobby(
+  //       currentUserId: myUid,
+  //       currentUserNickname: myNickname,
+  //       currentUserAvatarId: myAvatarId,
+  //       userLevel: myLevel,
+  //     );
+
+  //     // 4. On ferme le dialogue de chargement
+  //     if (context.mounted) Navigator.pop(context);
+
+  //     // 5. Direction le Lobby direct ! 🚀
+  //     print("Profil complet injecté -> Direction le Lobby : $roomId");
+  //     if (context.mounted) {
+  //       // Note : Utilise widget.lobbyId dans ton LobbyScreen pour lire la variable roomId passée ici
+  //       context.push('/lobby?roomId=$roomId');
+  //     }
+  //   } catch (error) {
+  //     // Fermer le chargement en cas de crash
+  //     if (context.mounted) Navigator.pop(context);
+  //     if (context.mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text("Impossible de trouver une salle : $error")),
+  //       );
+  //     }
+  //   }
+  // }
+
+  Future<void> _openCompetitionMode() async {
+    // 1. 🚨 ON VÉRIFIE D'ABORD LA CONNEXION (Avant d'ouvrir le loader ou SharedPreferences)
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      if (context.mounted) {
+        // Redirection directe vers le login s'il est guest
+        context.push('/login?roomId=none');
+      }
+      return; // On arrête la fonction ici !
+    }
+
+    // 2. Si l'utilisateur est connecté, ALORS on affiche le loader de matchmaking
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // 3. On récupère les infos locales depuis SharedPreferences
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+      String myUid =
+          currentUser.uid; // Plus besoin du "??", on est sûr qu'il est connecté
+      String myNickname = prefs.getString('user_nickname') ?? "Joueur";
+      String myAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
+      int myLevel = prefs.getInt('user_level') ?? 1;
+
+      // 4. Appel du service de matchmaking 📦
+      String roomId = await LobbyService().findOrCreateLobby(
+        currentUserId: myUid,
+        currentUserNickname: myNickname,
+        currentUserAvatarId: myAvatarId,
+        userLevel: myLevel,
+      );
+
+      // 5. On ferme le dialogue de chargement
+      if (context.mounted) Navigator.pop(context);
+
+      // 6. Direction le Lobby direct ! 🚀
+      print("Profil complet injecté -> Direction le Lobby : $roomId");
+      if (context.mounted) {
+        context.push('/lobby?roomId=$roomId');
+      }
+    } catch (error) {
+      // Fermer le chargement en cas de crash
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Impossible de trouver une salle : $error")),
+        );
+      }
+    }
   }
 
   Widget _buildRoomStage() {
