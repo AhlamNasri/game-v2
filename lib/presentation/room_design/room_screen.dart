@@ -223,14 +223,14 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     super.initState();
     unawaited(_lockLandscapeOrientation());
     WidgetsBinding.instance.addObserver(this);
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
-      (user) async {
-        if (user == null && _saveState?.userId != 'guest') {
-          await _saveRoom(silent: true);
-        }
-        await _loadData();
-      },
-    );
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
+      user,
+    ) async {
+      if (user == null && _saveState?.userId != 'guest') {
+        await _saveRoom(silent: true);
+      }
+      await _loadData();
+    });
     unawaited(_loadData());
   }
 
@@ -419,10 +419,12 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     if (state == null) return;
 
     final itemWidth = defaultRoomItemWidth(inventoryItem.id);
-    final stageWidth =
-        _stageSize.width == 0 ? box.size.width : _stageSize.width;
-    final stageHeight =
-        _stageSize.height == 0 ? box.size.height : _stageSize.height;
+    final stageWidth = _stageSize.width == 0
+        ? box.size.width
+        : _stageSize.width;
+    final stageHeight = _stageSize.height == 0
+        ? box.size.height
+        : _stageSize.height;
     final maxX = (stageWidth - itemWidth).clamp(0, double.infinity).toDouble();
     final maxY = (stageHeight - itemWidth).clamp(0, double.infinity).toDouble();
 
@@ -493,10 +495,19 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     if (state == null || _activeRoom.placedItems.length < 2) return;
 
     // Work on a copy, normalize, then swap layers
-    final items = _activeRoom.placedItems.map((i) => RoomItem(
-      name: i.name, asset: i.asset, x: i.x, y: i.y,
-      width: i.width, rotation: i.rotation, layer: i.layer,
-    )).toList();
+    final items = _activeRoom.placedItems
+        .map(
+          (i) => RoomItem(
+            name: i.name,
+            asset: i.asset,
+            x: i.x,
+            y: i.y,
+            width: i.width,
+            rotation: i.rotation,
+            layer: i.layer,
+          ),
+        )
+        .toList();
 
     // Normalize layer order on the copies
     final ordered = List<RoomItem>.of(items)..sort(_compareLayerOrder);
@@ -509,7 +520,9 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     );
     if (index == -1) return;
 
-    final targetIndex = (index + direction).clamp(0, ordered.length - 1).toInt();
+    final targetIndex = (index + direction)
+        .clamp(0, ordered.length - 1)
+        .toInt();
     if (targetIndex == index) return;
 
     final other = ordered[targetIndex];
@@ -587,28 +600,8 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     context.go('/dress-up');
   }
 
-<<<<<<< HEAD
   Future<void> _openCompetitionMode() async {
-    final User? currentUser = FirebaseAuth.instance.currentUser;
-
-    // 🚨 VÉRIF MAGIQUE : Si pas connecté OU si le compte est anonyme (Guest)
-    // On le redirige direct vers le login avant même d'ouvrir le loader
-    if (currentUser == null || currentUser.isAnonymous) {
-      print(
-        "Accès refusé : Utilisateur déconnecté ou Anonyme -> Redirection Login",
-      );
-      if (context.mounted) {
-        context.push('/login?roomId=none');
-      }
-      return; // On stoppe l'exécution ici !
-    }
-
-    // 2. Si on arrive ici, l'utilisateur a un VRAI compte officiel.
-    // On peut afficher l'indicateur de chargement visuel pour le matchmaking.
-=======
- Future<void> _openCompetitionMode() async {
     // _showMessage('Competition Mode coming soon');
->>>>>>> upstream/develop
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -616,15 +609,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     );
 
     try {
-<<<<<<< HEAD
-      // 3. On récupère les infos locales ou par défaut depuis SharedPreferences
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-
-      // On utilise directement l'uid de Firebase puisqu'on est sûr qu'il est connecté
-      String myUid = currentUser.uid;
-
-      // Récupération du pseudo, de l'avatar et du niveau sauvegardés localement
-=======
       // 2. On récupère les infos locales ou par défaut depuis SharedPreferences
       final SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -634,16 +618,12 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
           currentUser?.uid ?? prefs.getString('uid') ?? "uid_inconnu";
 
       // Récupération du pseudo et de l'avatar sauvegardés localement
->>>>>>> upstream/develop
       String myNickname = prefs.getString('user_nickname') ?? "Joueur";
       String myAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
       int myLevel =
           prefs.getInt('user_level') ??
           1; // Niveau dynamique (ou laisse 1 par défaut)
 
-<<<<<<< HEAD
-      // 4. Appel du service de matchmaking avec la structure complète 📦
-=======
       // 🚨 Si l'utilisateur n'est pas connecté du tout sur Firebase, on le redirige vers le login d'abord
       if (currentUser == null) {
         if (context.mounted) Navigator.pop(context); // Ferme le loader
@@ -652,7 +632,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       }
 
       // 3. Appel du service de matchmaking avec la nouvelle structure complète 📦
->>>>>>> upstream/develop
       String roomId = await LobbyService().findOrCreateLobby(
         currentUserId: myUid,
         currentUserNickname: myNickname,
@@ -660,21 +639,11 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         userLevel: myLevel,
       );
 
-<<<<<<< HEAD
-      // 5. On ferme le dialogue de chargement dès que la salle est trouvée/créée
-      if (context.mounted) {
-        Navigator.pop(context);
-      }
-
-      // 6. Direction le Lobby en direct ! 🚀
-      print("Profil officiel injecté -> Direction le Lobby : $roomId");
-=======
       // 4. On ferme le dialogue de chargement
       if (context.mounted) Navigator.pop(context);
 
       // 5. Direction le Lobby direct ! 🚀
       print("Profil complet injecté -> Direction le Lobby : $roomId");
->>>>>>> upstream/develop
       if (context.mounted) {
         // Note : Utilise widget.lobbyId dans ton LobbyScreen pour lire la variable roomId passée ici
         context.push('/lobby?roomId=$roomId');
