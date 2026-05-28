@@ -223,14 +223,14 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     super.initState();
     unawaited(_lockLandscapeOrientation());
     WidgetsBinding.instance.addObserver(this);
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
-      (user) async {
-        if (user == null && _saveState?.userId != 'guest') {
-          await _saveRoom(silent: true);
-        }
-        await _loadData();
-      },
-    );
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
+      user,
+    ) async {
+      if (user == null && _saveState?.userId != 'guest') {
+        await _saveRoom(silent: true);
+      }
+      await _loadData();
+    });
     unawaited(_loadData());
   }
 
@@ -419,10 +419,12 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     if (state == null) return;
 
     final itemWidth = defaultRoomItemWidth(inventoryItem.id);
-    final stageWidth =
-        _stageSize.width == 0 ? box.size.width : _stageSize.width;
-    final stageHeight =
-        _stageSize.height == 0 ? box.size.height : _stageSize.height;
+    final stageWidth = _stageSize.width == 0
+        ? box.size.width
+        : _stageSize.width;
+    final stageHeight = _stageSize.height == 0
+        ? box.size.height
+        : _stageSize.height;
     final maxX = (stageWidth - itemWidth).clamp(0, double.infinity).toDouble();
     final maxY = (stageHeight - itemWidth).clamp(0, double.infinity).toDouble();
 
@@ -493,10 +495,19 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     if (state == null || _activeRoom.placedItems.length < 2) return;
 
     // Work on a copy, normalize, then swap layers
-    final items = _activeRoom.placedItems.map((i) => RoomItem(
-      name: i.name, asset: i.asset, x: i.x, y: i.y,
-      width: i.width, rotation: i.rotation, layer: i.layer,
-    )).toList();
+    final items = _activeRoom.placedItems
+        .map(
+          (i) => RoomItem(
+            name: i.name,
+            asset: i.asset,
+            x: i.x,
+            y: i.y,
+            width: i.width,
+            rotation: i.rotation,
+            layer: i.layer,
+          ),
+        )
+        .toList();
 
     // Normalize layer order on the copies
     final ordered = List<RoomItem>.of(items)..sort(_compareLayerOrder);
@@ -509,7 +520,9 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     );
     if (index == -1) return;
 
-    final targetIndex = (index + direction).clamp(0, ordered.length - 1).toInt();
+    final targetIndex = (index + direction)
+        .clamp(0, ordered.length - 1)
+        .toInt();
     if (targetIndex == index) return;
 
     final other = ordered[targetIndex];
@@ -587,7 +600,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     context.go('/dress-up');
   }
 
- Future<void> _openCompetitionMode() async {
+  Future<void> _openCompetitionMode() async {
     // _showMessage('Competition Mode coming soon');
     showDialog(
       context: context,
@@ -636,8 +649,10 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         context.push('/lobby?roomId=$roomId');
       }
     } catch (error) {
-      // Fermer le chargement en cas de crash
-      if (context.mounted) Navigator.pop(context);
+      // Fermer le chargement en cas de crash ou problème réseau
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Impossible de trouver une salle : $error")),
