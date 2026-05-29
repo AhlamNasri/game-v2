@@ -5,14 +5,17 @@ class ShopItem {
   final int price;
   final String imagePath;
 
-  const ShopItem({required this.name, required this.price, required this.imagePath});
+  const ShopItem({
+    required this.name,
+    required this.price,
+    required this.imagePath,
+  });
 }
 
 class ShopCategory {
   final String label;
   final IconData icon;
   final List<ShopItem> items;
-
 
   const ShopCategory({
     required this.label,
@@ -40,27 +43,63 @@ class _ShopScreenState extends State<ShopScreen>
       label: 'Chaussures',
       icon: Icons.ice_skating,
       items: [
-        ShopItem(name: 'Baskets Coeur', price: 180, imagePath: 'assets/clothes/chaussures/sh1.jpeg'),
-        ShopItem(name: 'Bottes Roses', price: 260, imagePath: 'assets/clothes/chaussures/sh2.jpeg'),
-        ShopItem(name: 'Sandales Ruban', price: 140, imagePath: 'assets/clothes/chaussures/sh3.jpeg'),
+        ShopItem(
+          name: 'Baskets Coeur',
+          price: 180,
+          imagePath: 'assets/clothes/chaussures/sh1.jpeg',
+        ),
+        ShopItem(
+          name: 'Bottes Roses',
+          price: 260,
+          imagePath: 'assets/clothes/chaussures/sh2.jpeg',
+        ),
+        ShopItem(
+          name: 'Sandales Ruban',
+          price: 140,
+          imagePath: 'assets/clothes/chaussures/sh3.jpeg',
+        ),
       ],
     ),
     ShopCategory(
       label: 'Accessoires',
       icon: Icons.diamond,
       items: [
-        ShopItem(name: 'Collier Perle', price: 90, imagePath: 'assets/clothes/accessoires/a1.jpeg'),
-        ShopItem(name: 'Bracelet Etoile', price: 110, imagePath: 'assets/clothes/accessoires/a2.jpeg'),
-        ShopItem(name: 'Sac Nuage', price: 200, imagePath: 'assets/clothes/accessoires/a3.jpeg'),
+        ShopItem(
+          name: 'Collier Perle',
+          price: 90,
+          imagePath: 'assets/clothes/accessoires/a1.jpeg',
+        ),
+        ShopItem(
+          name: 'Bracelet Etoile',
+          price: 110,
+          imagePath: 'assets/clothes/accessoires/a2.jpeg',
+        ),
+        ShopItem(
+          name: 'Sac Nuage',
+          price: 200,
+          imagePath: 'assets/clothes/accessoires/a3.jpeg',
+        ),
       ],
     ),
     ShopCategory(
       label: 'Robes',
       icon: Icons.checkroom,
       items: [
-        ShopItem(name: 'Robe Princesse', price: 250, imagePath:'assets/clothes/robes/d1.jpeg'),
-        ShopItem(name: 'Robe Bonbon', price: 320, imagePath: 'assets/clothes/robes/d2.jpeg' ),
-        ShopItem(name: 'Robe Etoile', price: 380, imagePath: 'assets/clothes/robes/d3.jpeg'),
+        ShopItem(
+          name: 'Robe Princesse',
+          price: 250,
+          imagePath: 'assets/clothes/robes/d1.jpeg',
+        ),
+        ShopItem(
+          name: 'Robe Bonbon',
+          price: 320,
+          imagePath: 'assets/clothes/robes/d2.jpeg',
+        ),
+        ShopItem(
+          name: 'Robe Etoile',
+          price: 380,
+          imagePath: 'assets/clothes/robes/d3.jpeg',
+        ),
       ],
     ),
     ShopCategory(
@@ -72,16 +111,32 @@ class _ShopScreenState extends State<ShopScreen>
           price: 220,
           imagePath: 'assets/clothes/pantalons/p1.jpeg',
         ),
-        ShopItem(name: 'Pantalon Rose', price: 240, imagePath: 'assets/clothes/pantalons/p2.jpeg'),
-        ShopItem(name: 'Short Kawaii', price: 160, imagePath: 'assets/clothes/pantalons/p3.jpeg'),
+        ShopItem(
+          name: 'Pantalon Rose',
+          price: 240,
+          imagePath: 'assets/clothes/pantalons/p2.jpeg',
+        ),
+        ShopItem(
+          name: 'Short Kawaii',
+          price: 160,
+          imagePath: 'assets/clothes/pantalons/p3.jpeg',
+        ),
       ],
     ),
     ShopCategory(
       label: 'T-shirts',
       icon: Icons.dry_cleaning,
       items: [
-        ShopItem(name: 'T-shirt Chat', price: 130, imagePath: 'assets/clothes/tshirts/t1.jpeg'),
-        ShopItem(name: 'Sweat Ours', price: 100, imagePath: 'assets/clothes/tshirts/t2.jpeg'),
+        ShopItem(
+          name: 'T-shirt Chat',
+          price: 130,
+          imagePath: 'assets/clothes/tshirts/t1.jpeg',
+        ),
+        ShopItem(
+          name: 'Sweat Ours',
+          price: 100,
+          imagePath: 'assets/clothes/tshirts/t2.jpeg',
+        ),
         ShopItem(
           name: 'Blouson Cuir Rose',
           price: 300,
@@ -96,40 +151,84 @@ class _ShopScreenState extends State<ShopScreen>
       label: 'Lits',
       icon: Icons.bed,
       items: [
-        ShopItem(name: 'Lit Coeur', price: 800, imagePath: 'assets/furniture/lits/l1.jpeg'),
-        ShopItem(name: 'Lit Nuage', price: 950, imagePath: 'assets/furniture/lits/l2.jpeg'),
-        ShopItem(name: 'Lit Princesse', price: 1200, imagePath: 'assets/furniture/lits/l3.jpeg'),
+        ShopItem(
+          name: 'Lit Coeur',
+          price: 800,
+          imagePath: 'assets/furniture/lits/l1.jpeg',
+        ),
+        ShopItem(
+          name: 'Lit Nuage',
+          price: 950,
+          imagePath: 'assets/furniture/lits/l2.jpeg',
+        ),
+        ShopItem(
+          name: 'Lit Princesse',
+          price: 1200,
+          imagePath: 'assets/furniture/lits/l3.jpeg',
+        ),
       ],
     ),
     ShopCategory(
       label: 'Lampes',
       icon: Icons.light,
       items: [
-        ShopItem(name: 'Lampe Lune', price: 350, imagePath: 'assets/furniture/lampes/o1.jpeg'),
-        ShopItem(name: 'Lampe Coeur', price: 400, imagePath: 'assets/furniture/lampes/o2.jpeg'),
-        ShopItem(name: 'Lampe Etoile', price: 450, imagePath: 'assets/furniture/lampes/o3.jpeg'),
+        ShopItem(
+          name: 'Lampe Lune',
+          price: 350,
+          imagePath: 'assets/furniture/lampes/o1.jpeg',
+        ),
+        ShopItem(
+          name: 'Lampe Coeur',
+          price: 400,
+          imagePath: 'assets/furniture/lampes/o2.jpeg',
+        ),
+        ShopItem(
+          name: 'Lampe Etoile',
+          price: 450,
+          imagePath: 'assets/furniture/lampes/o3.jpeg',
+        ),
       ],
     ),
     ShopCategory(
       label: 'Bureaux',
       icon: Icons.desk,
       items: [
-        ShopItem(name: 'Bureau Rose', price: 900, imagePath: 'assets/furniture/bureaux/b1.jpeg'),
+        ShopItem(
+          name: 'Bureau Rose',
+          price: 900,
+          imagePath: 'assets/furniture/bureaux/b1.jpeg',
+        ),
         ShopItem(
           name: 'Coiffeuse Princesse',
           price: 1500,
           imagePath: 'assets/furniture/bureaux/b2.jpeg',
         ),
-        ShopItem(name: 'Chaise Bow-tique', price: 400, imagePath: 'assets/furniture/bureaux/b3.jpeg'),
+        ShopItem(
+          name: 'Chaise Bow-tique',
+          price: 400,
+          imagePath: 'assets/furniture/bureaux/b3.jpeg',
+        ),
       ],
     ),
     ShopCategory(
       label: 'Tapis',
       icon: Icons.layers,
       items: [
-        ShopItem(name: 'Tapis Nuage', price: 300, imagePath: 'assets/furniture/tapis/t1.jpeg'),
-        ShopItem(name: 'Tapis Coeur', price: 350, imagePath: 'assets/furniture/tapis/t2.jpeg'),
-        ShopItem(name: 'Tapis Etoile', price: 420, imagePath: 'assets/furniture/tapis/t3.jpeg'),
+        ShopItem(
+          name: 'Tapis Nuage',
+          price: 300,
+          imagePath: 'assets/furniture/tapis/t1.jpeg',
+        ),
+        ShopItem(
+          name: 'Tapis Coeur',
+          price: 350,
+          imagePath: 'assets/furniture/tapis/t2.jpeg',
+        ),
+        ShopItem(
+          name: 'Tapis Etoile',
+          price: 420,
+          imagePath: 'assets/furniture/tapis/t3.jpeg',
+        ),
       ],
     ),
   ];
@@ -192,15 +291,15 @@ class _ShopScreenState extends State<ShopScreen>
                 ),
                 const SizedBox(height: 10),
                 // À la place de : Icon(item.icon, size: 54, color: const Color(0xFFE88FA0)),
-ClipRRect(
-  borderRadius: BorderRadius.circular(12),
-  child: Image.asset(
-    item.imagePath,
-    height: 70, // Ajuste la taille selon tes images
-    width: 70,
-    fit: BoxFit.contain,
-  ),
-),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    item.imagePath,
+                    height: 70, // Ajuste la taille selon tes images
+                    width: 70,
+                    fit: BoxFit.contain,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Text(
                   item.name,
@@ -627,16 +726,16 @@ class _ShopCard extends StatelessWidget {
         children: [
           Expanded(
             child: Center(
-              child:// À la place de : Icon(item.icon, size: 54, color: const Color(0xFFE88FA0)),
-ClipRRect(
-  borderRadius: BorderRadius.circular(12),
-  child: Image.asset(
-    item.imagePath,
-    height: 70, // Ajuste la taille selon tes images
-    width: 70,
-    fit: BoxFit.contain,
-  ),
-),
+              child: // À la place de : Icon(item.icon, size: 54, color: const Color(0xFFE88FA0)),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  item.imagePath,
+                  height: 70, // Ajuste la taille selon tes images
+                  width: 70,
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
           Padding(
