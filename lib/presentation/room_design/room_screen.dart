@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fashion_room_girls/data/services/lobbyService.dart';
+import 'package:fashion_room_girls/data/services/user_service.dart';
 import 'package:fashion_room_girls/presentation/room_design/data/room_assets.dart';
 import 'package:fashion_room_girls/presentation/room_design/data/room_repository.dart';
 import 'package:fashion_room_girls/presentation/room_design/data/room_save_state.dart';
@@ -17,56 +18,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-// class RoomItem {
-//   final String name;
-//   final String asset; // full filename, e.g. "bed.png", "photo.jpeg", "bg.webp"
-//   double x;
-//   double y;
-//   double width;
-
-//   RoomItem({
-//     required this.name,
-//     required this.asset,
-//     this.x = 100,
-//     this.y = 100,
-//     this.width = 120,
-//   });
-
-//   Map<String, dynamic> toMap() => {
-//     'name': name,
-//     'asset': asset,
-//     'x': x,
-//     'y': y,
-//     'width': width,
-//   };
-
-//   factory RoomItem.fromMap(Map<String, dynamic> map) => RoomItem(
-//     name: map['name'],
-//     asset: map['asset'],
-//     x: (map['x'] as num).toDouble(),
-//     y: (map['y'] as num).toDouble(),
-//     width: (map['width'] as num).toDouble(),
-//   );
-// }
-
-/// Returns the full asset path for an item name.
-/// It checks a priority list of extensions and falls back to the
-/// name itself if it already contains an extension.
 String _resolveAssetPath(String itemName) {
-  // If the inventory already stores full filenames (e.g. "bed.jpeg"), use as-is.
   if (itemName.contains('.')) {
     return 'room_assets/$itemName';
   }
-  // Otherwise fall back to the extension-priority helper.
-  // At runtime Flutter will throw if the asset doesn't exist, so keep your
-  // pubspec.yaml assets list up-to-date with the actual files.
-  return 'room_assets/$itemName.png'; // default; see _AssetImage below
+  return 'room_assets/$itemName.png';
 }
 
-/// A widget that tries multiple extensions in order and renders the first one
-/// that exists, showing a placeholder on failure.
 class _AnyExtensionImage extends StatelessWidget {
   final String itemName;
   final double width;
@@ -75,12 +34,10 @@ class _AnyExtensionImage extends StatelessWidget {
   const _AnyExtensionImage({
     required this.itemName,
     required this.width,
-    this.fit = BoxFit.contain,
-  });
+  }) : fit = BoxFit.contain;
 
   static const _extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
 
-  /// If itemName already carries an extension just use it directly.
   bool get _hasExtension => itemName.contains('.');
 
   @override
@@ -90,12 +47,10 @@ class _AnyExtensionImage extends StatelessWidget {
         'room_assets/$itemName',
         width: width,
         fit: fit,
-        errorBuilder: (_, __, ___) => _placeholder(),
+        errorBuilder: (_, _, _) => _placeholder(),
       );
     }
 
-    // Build a chain of Image.asset widgets, each falling back to the next
-    // extension on error.
     return _FallbackImage(
       basePath: 'room_assets/$itemName',
       extensions: _extensions,
@@ -105,15 +60,14 @@ class _AnyExtensionImage extends StatelessWidget {
   }
 
   Widget _placeholder() => SizedBox(
-    width: width,
-    height: width,
-    child: const Center(
-      child: Icon(Icons.broken_image_outlined, color: Colors.grey),
-    ),
-  );
+        width: width,
+        height: width,
+        child: const Center(
+          child: Icon(Icons.broken_image_outlined, color: Colors.grey),
+        ),
+      );
 }
 
-/// Tries [extensions] one by one, falling through on asset-load errors.
 class _FallbackImage extends StatefulWidget {
   final String basePath;
   final List<String> extensions;
@@ -151,8 +105,7 @@ class _FallbackImageState extends State<_FallbackImage> {
       path,
       width: widget.width,
       fit: widget.fit,
-      errorBuilder: (_, __, ___) {
-        // Try the next extension on the next frame.
+      errorBuilder: (_, _, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) setState(() => _extIndex++);
         });
@@ -205,7 +158,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     return user == null ? 'Guest' : 'Player';
   }
 
-  int get _playerLevel => _saveState?.playerLevel ?? 5;
+  int get _playerLevel => _saveState?.playerLevel ?? 1;
 
   Future<void> _lockLandscapeOrientation() {
     return SystemChrome.setPreferredOrientations(const [
@@ -223,9 +176,8 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     super.initState();
     unawaited(_lockLandscapeOrientation());
     WidgetsBinding.instance.addObserver(this);
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
-      user,
-    ) async {
+    _authSubscription =
+        FirebaseAuth.instance.authStateChanges().listen((user) async {
       if (user == null && _saveState?.userId != 'guest') {
         await _saveRoom(silent: true);
       }
@@ -276,7 +228,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _saveRoom({bool silent = false}) async {
-    // Always capture _saveState at call time so we save the latest version
     final state = _saveState;
     if (state == null) return;
 
@@ -330,8 +281,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// Replaces the active room with [updatedRoom] and returns the new full
-  /// save state. Does NOT call setState — callers do that.
   RoomSaveState _withUpdatedActiveRoom(
     RoomSaveState state,
     RoomDefinition updatedRoom,
@@ -419,12 +368,10 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     if (state == null) return;
 
     final itemWidth = defaultRoomItemWidth(inventoryItem.id);
-    final stageWidth = _stageSize.width == 0
-        ? box.size.width
-        : _stageSize.width;
-    final stageHeight = _stageSize.height == 0
-        ? box.size.height
-        : _stageSize.height;
+    final stageWidth =
+        _stageSize.width == 0 ? box.size.width : _stageSize.width;
+    final stageHeight =
+        _stageSize.height == 0 ? box.size.height : _stageSize.height;
     final maxX = (stageWidth - itemWidth).clamp(0, double.infinity).toDouble();
     final maxY = (stageHeight - itemWidth).clamp(0, double.infinity).toDouble();
 
@@ -437,7 +384,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       layer: _nextLayer(),
     );
 
-    // Build an entirely new RoomDefinition — no mutation of existing lists
     final updatedRoom = RoomDefinition(
       id: _activeRoom.id,
       name: _activeRoom.name,
@@ -456,7 +402,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     final state = _saveState;
     if (state == null) return;
 
-    // Replace the matching item with a rotated copy — no mutation
     final updatedItems = _activeRoom.placedItems.map((i) {
       if (i == item) {
         return RoomItem(
@@ -481,7 +426,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
 
     setState(() {
       _saveState = _withUpdatedActiveRoom(state, updatedRoom);
-      // Keep the rotated copy selected
       _selectedItem = updatedItems.firstWhere(
         (i) => i.asset == item.asset && i.x == item.x && i.y == item.y,
         orElse: () => updatedItems.last,
@@ -494,22 +438,18 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     final state = _saveState;
     if (state == null || _activeRoom.placedItems.length < 2) return;
 
-    // Work on a copy, normalize, then swap layers
     final items = _activeRoom.placedItems
-        .map(
-          (i) => RoomItem(
-            name: i.name,
-            asset: i.asset,
-            x: i.x,
-            y: i.y,
-            width: i.width,
-            rotation: i.rotation,
-            layer: i.layer,
-          ),
-        )
+        .map((i) => RoomItem(
+              name: i.name,
+              asset: i.asset,
+              x: i.x,
+              y: i.y,
+              width: i.width,
+              rotation: i.rotation,
+              layer: i.layer,
+            ))
         .toList();
 
-    // Normalize layer order on the copies
     final ordered = List<RoomItem>.of(items)..sort(_compareLayerOrder);
     for (var idx = 0; idx < ordered.length; idx++) {
       ordered[idx].layer = idx;
@@ -520,9 +460,8 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     );
     if (index == -1) return;
 
-    final targetIndex = (index + direction)
-        .clamp(0, ordered.length - 1)
-        .toInt();
+    final targetIndex =
+        (index + direction).clamp(0, ordered.length - 1).toInt();
     if (targetIndex == index) return;
 
     final other = ordered[targetIndex];
@@ -562,15 +501,10 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     _queueAutoSave();
   }
 
-  /// Called by RoomStage when an item is dragged (position mutated in-place
-  /// by the stage widget). We rebuild the state so _saveState reflects the
-  /// latest positions before the autosave fires.
   void _markRoomChanged() {
     final state = _saveState;
     if (state == null) return;
 
-    // Copy current items (with their already-mutated x/y from the stage)
-    // into a fresh RoomDefinition so toMap() captures the latest positions.
     final updatedRoom = RoomDefinition(
       id: _activeRoom.id,
       name: _activeRoom.name,
@@ -601,7 +535,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _openCompetitionMode() async {
-    // _showMessage('Competition Mode coming soon');
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -609,53 +542,46 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     );
 
     try {
-      // 2. On récupère les infos locales ou par défaut depuis SharedPreferences
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-
-      // Récupération de l'ID utilisateur (Firebase Auth ou SharedPreferences)
       final User? currentUser = FirebaseAuth.instance.currentUser;
-      String myUid =
-          currentUser?.uid ?? prefs.getString('uid') ?? "uid_inconnu";
 
-      // Récupération du pseudo et de l'avatar sauvegardés localement
-      String myNickname = prefs.getString('user_nickname') ?? "Joueur";
-      String myAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
-      int myLevel =
-          prefs.getInt('user_level') ??
-          1; // Niveau dynamique (ou laisse 1 par défaut)
-
-      // 🚨 Si l'utilisateur n'est pas connecté du tout sur Firebase, on le redirige vers le login d'abord
       if (currentUser == null) {
-        if (context.mounted) Navigator.pop(context); // Ferme le loader
+        if (context.mounted) Navigator.pop(context);
         if (context.mounted) context.push('/login?roomId=none');
         return;
       }
 
-      // 3. Appel du service de matchmaking avec la nouvelle structure complète 📦
-      String roomId = await LobbyService().findOrCreateLobby(
-        currentUserId: myUid,
+      // ✅ Use UserService — single source for local user data
+      final Map<String, String?> localUser =
+          await UserService().getLocalUser();
+
+      final String myNickname =
+          localUser['nickname']?.isNotEmpty == true
+              ? localUser['nickname']!
+              : _playerName;
+
+      final String myAvatarId =
+          localUser['avatarId']?.isNotEmpty == true
+              ? localUser['avatarId']!
+              : 'avatar_1';
+
+      // Level comes from _saveState loaded from Firestore users collection
+      final int myLevel = _saveState?.playerLevel ?? 1;
+
+      final String roomId = await LobbyService().findOrCreateLobby(
+        currentUserId: currentUser.uid,
         currentUserNickname: myNickname,
         currentUserAvatarId: myAvatarId,
         userLevel: myLevel,
       );
 
-      // 4. On ferme le dialogue de chargement
       if (context.mounted) Navigator.pop(context);
-
-      // 5. Direction le Lobby direct ! 🚀
-      print("Profil complet injecté -> Direction le Lobby : $roomId");
-      if (context.mounted) {
-        // Note : Utilise widget.lobbyId dans ton LobbyScreen pour lire la variable roomId passée ici
-        context.push('/lobby?roomId=$roomId');
-      }
+      if (context.mounted) context.push('/lobby?roomId=$roomId');
     } catch (error) {
-      // Fermer le chargement en cas de crash ou problème réseau
-      if (context.mounted) {
-        Navigator.pop(context);
-      }
+      if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Impossible de trouver une salle : $error")),
+          SnackBar(
+              content: Text('Impossible de trouver une salle : $error')),
         );
       }
     }
