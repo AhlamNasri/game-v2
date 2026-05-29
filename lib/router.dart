@@ -74,7 +74,8 @@ import 'package:fashion_room_girls/presentation/competition/play_zone_screen.dar
 import 'package:fashion_room_girls/presentation/competition/result_zone_screen.dart';
 import 'package:fashion_room_girls/presentation/competition/test.dart';
 import 'package:fashion_room_girls/presentation/competition/voting_zone_screen.dart';
-import 'package:fashion_room_girls/presentation/dress_up/dress_up_screen.dart';
+import 'package:fashion_room_girls/presentation/character_selection/character_selection_screen.dart';
+import 'package:fashion_room_girls/presentation/dressing/dressing_screen.dart';
 import 'package:fashion_room_girls/presentation/menu/menu_screen.dart';
 import 'package:fashion_room_girls/presentation/shop/shop_screen.dart';
 import 'package:go_router/go_router.dart';
@@ -159,8 +160,16 @@ GoRouter createAppRouter(String initialRoute) {
       GoRoute(path: '/room', builder: (context, state) => const RoomScreen()),
       GoRoute(path: '/shop', builder: (context, state) => const ShopScreen()),
       GoRoute(
+        path: '/character',
+        builder: (context, state) => const CharacterSelectionScreen(),
+      ),
+      GoRoute(
+        path: '/dressing',
+        builder: (context, state) => const DressingScreen(),
+      ),
+      GoRoute(
         path: '/dress-up',
-        builder: (context, state) => const DressUpScreen(),
+        builder: (context, state) => const CharacterSelectionScreen(),
       ),
     ],
   );

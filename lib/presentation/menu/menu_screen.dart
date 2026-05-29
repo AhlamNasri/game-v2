@@ -143,11 +143,13 @@ class _MenuScreenState extends State<MenuScreen>
     try {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       final String myUid = currentUser?.uid ?? '';
-      const int myLevel = 1;
+      final String myNickname = _profile.username;
+      const String myAvatarId = 'avatar_1';
+      final int myLevel = _profile.level;
       final String roomId = await LobbyService().findOrCreateLobby(
         currentUserId: myUid,
-        currentUserNickname: _profile.username,
-        currentUserAvatarId: 'avatar_1',
+        currentUserNickname: myNickname,
+        currentUserAvatarId: myAvatarId,
         userLevel: myLevel,
       );
       if (!mounted) return;
