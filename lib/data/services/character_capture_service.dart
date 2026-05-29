@@ -6,6 +6,20 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 import '../models/character_customization.dart';
 
+class CharacterCapture {
+  final String id;
+  final String downloadUrl;
+  final String storagePath;
+  final Map<String, dynamic> data;
+
+  const CharacterCapture({
+    required this.id,
+    required this.downloadUrl,
+    required this.storagePath,
+    required this.data,
+  });
+}
+
 class CharacterCaptureService {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
@@ -50,5 +64,30 @@ class CharacterCaptureService {
     await userRef.collection('character_captures').add(captureData);
 
     return downloadUrl;
+  }
+
+  Future<List<CharacterCapture>> listCaptures() async {
+    final user = _auth.currentUser;
+    if (user == null) return [];
+
+    final snapshot = await _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('character_captures')
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    return snapshot.docs
+        .map((doc) {
+          final data = doc.data();
+          return CharacterCapture(
+            id: doc.id,
+            downloadUrl: data['downloadUrl'] as String? ?? '',
+            storagePath: data['storagePath'] as String? ?? '',
+            data: data,
+          );
+        })
+        .where((capture) => capture.downloadUrl.isNotEmpty)
+        .toList();
   }
 }

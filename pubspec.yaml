@@ -83,6 +83,10 @@ flutter:
       - assets/clothes/robes/
       - assets/clothes/pantalons/
       - assets/clothes/tshirts/
+      - assets/furniture/lits/
+      - assets/furniture/lampes/
+      - assets/furniture/bureaux/
+      - assets/furniture/tapis/
       - assets/characters/
       - assets/characters/body/
       - assets/characters/hair/

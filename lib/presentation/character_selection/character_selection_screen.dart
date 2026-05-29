@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../application/character_provider.dart';
 import '../../data/models/character_customization.dart';
@@ -70,7 +69,7 @@ class CharacterSelectionScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: FilledButton.icon(
             onPressed: () {
-              context.go('/dressing');
+              Navigator.of(context).pushNamed('/dressing');
             },
             icon: const Icon(Icons.play_arrow_rounded),
             label: const Text('Commencer'),

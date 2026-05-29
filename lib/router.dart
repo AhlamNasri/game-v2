@@ -75,6 +75,7 @@ import 'package:fashion_room_girls/presentation/competition/play_zone_screen.dar
 import 'package:fashion_room_girls/presentation/competition/result_zone_screen.dart';
 import 'package:fashion_room_girls/presentation/competition/test.dart';
 import 'package:fashion_room_girls/presentation/competition/voting_zone_screen.dart';
+import 'package:fashion_room_girls/presentation/character_selection/character_selection_screen.dart';
 import 'package:fashion_room_girls/presentation/dressing/dressing_screen.dart';
 import 'package:fashion_room_girls/presentation/menu/menu_screen.dart';
 import 'package:fashion_room_girls/presentation/shop/shop_screen.dart';

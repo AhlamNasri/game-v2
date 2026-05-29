@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../application/character_provider.dart';
 import '../../data/models/clothing_item.dart';
@@ -136,7 +135,7 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
   }
 
   void _openCharacterSelection() {
-    context.go('/character');
+    Navigator.of(context).pushReplacementNamed('/character');
   }
 
   Future<void> _captureCharacter() async {
