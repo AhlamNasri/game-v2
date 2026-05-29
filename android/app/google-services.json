@@ -12,7 +12,20 @@
           "package_name": "com.example.fashion_room_girls"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "489288826768-fbmt7nitvpqbim16rmujst9g5grrmj8m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.fashion_room_girls",
+            "certificate_hash": "236c670c2cb6e9751b6b03e3fc070872d150f142"
+          }
+        },
+        {
+          "client_id": "489288826768-16qo1oi8oum87tm7elmk7r1q4pm7mhno.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAez8_QnqYo0OocL70ODuV_Aeqo_KIh0eQ"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "489288826768-16qo1oi8oum87tm7elmk7r1q4pm7mhno.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
