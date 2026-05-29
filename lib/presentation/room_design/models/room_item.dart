@@ -1,13 +1,13 @@
 class RoomItem {
   final String name;
   final String asset;
-  double x;
-  double y;
-  double width;
-  double rotation;
-  int layer;
+  final double x;
+  final double y;
+  final double width;
+  final double rotation;
+  final int layer;
 
-  RoomItem({
+  const RoomItem({
     required this.name,
     required this.asset,
     this.x = 100,
@@ -16,6 +16,22 @@ class RoomItem {
     this.rotation = 0,
     this.layer = 0,
   });
+
+  RoomItem copyWith({
+    double? x,
+    double? y,
+    double? width,
+    double? rotation,
+    int? layer,
+  }) => RoomItem(
+    name: name,
+    asset: asset,
+    x: x ?? this.x,
+    y: y ?? this.y,
+    width: width ?? this.width,
+    rotation: rotation ?? this.rotation,
+    layer: layer ?? this.layer,
+  );
 
   Map<String, dynamic> toMap() => {
     'name': name,

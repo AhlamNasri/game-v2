@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fashion_room_girls/data/services/lobbyService.dart';
+import 'package:fashion_room_girls/data/services/user_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -60,10 +61,7 @@ class _MenuScreenState extends State<MenuScreen>
         });
         return;
       }
-      final snapshot = await _firestore
-          .collection('user_rooms')
-          .doc(user.uid)
-          .get();
+      final snapshot = await _firestore.collection('users').doc(user.uid).get();
       final data = snapshot.data() ?? const <String, dynamic>{};
       final displayName = _displayNameFor(user);
       if (!mounted) return;
@@ -80,7 +78,7 @@ class _MenuScreenState extends State<MenuScreen>
               _readInt(data, ['playerLevel', 'level'], fallback: 1),
             ),
           ),
-          coins: _readInt(data, ['coins', 'gems'], fallback: 0),
+          coins: _readInt(data, ['coins', 'gems', 'price'], fallback: 0),
           avatarId: data['avatarId'] as String? ?? '',
         );
         _loadingProfile = false;
@@ -147,8 +145,9 @@ class _MenuScreenState extends State<MenuScreen>
       final User? currentUser = FirebaseAuth.instance.currentUser;
       final String myUid = currentUser?.uid ?? '';
       final String myNickname = _profile.username;
-      final String myAvatarId =
-          _profile.avatarId.isNotEmpty ? _profile.avatarId : _profile.initials;
+      final String myAvatarId = _profile.avatarId.isNotEmpty
+          ? _profile.avatarId
+          : _profile.initials;
       final int myLevel = _profile.level;
 
       final String roomId = await LobbyService().findOrCreateLobby(
@@ -179,6 +178,7 @@ class _MenuScreenState extends State<MenuScreen>
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && !user.isAnonymous) {
       await FirebaseAuth.instance.signOut();
+      await UserService().clearLocalUser();
       if (mounted) context.go('/login');
       return;
     }
@@ -235,6 +235,7 @@ class _MenuScreenState extends State<MenuScreen>
                   onDecorateRoom: () => context.push('/room'),
                   onCompetitionMode: _startCompetitionMode,
                   onCloset: () => context.push('/dress-up'),
+                  onSettings: () => context.push('/settings'),
                   onAuthAction: _handleAuthAction,
                 );
               },
@@ -258,6 +259,7 @@ class _MenuLayout extends StatelessWidget {
   final VoidCallback onDecorateRoom;
   final VoidCallback onCompetitionMode;
   final VoidCallback onCloset;
+  final VoidCallback onSettings;
   final VoidCallback onAuthAction;
 
   const _MenuLayout({
@@ -268,6 +270,7 @@ class _MenuLayout extends StatelessWidget {
     required this.onDecorateRoom,
     required this.onCompetitionMode,
     required this.onCloset,
+    required this.onSettings,
     required this.onAuthAction,
   });
 
@@ -297,6 +300,7 @@ class _MenuLayout extends StatelessWidget {
                   isLoggedIn: isLoggedIn,
                   profile: profile,
                   onAuthAction: onAuthAction,
+                  onSettings: onSettings,
                   h: h,
                 ),
               ],
@@ -339,9 +343,7 @@ class _MenuLayout extends StatelessWidget {
                   icon: Icons.shopping_bag_outlined,
                   accent: const Color(0xFF7B8BFF),
                   h: h,
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Boutique à venir !')),
-                  ),
+                  onPressed: () => context.push('/shop'),
                 ),
               ],
             ),
@@ -550,12 +552,14 @@ class _BottomBar extends StatelessWidget {
   final bool isLoggedIn;
   final _PlayerProfile profile;
   final VoidCallback onAuthAction;
+  final VoidCallback onSettings;
   final double h;
 
   const _BottomBar({
     required this.isLoggedIn,
     required this.profile,
     required this.onAuthAction,
+    required this.onSettings,
     required this.h,
   });
 
@@ -578,9 +582,7 @@ class _BottomBar extends StatelessWidget {
           icon: Icons.settings_outlined,
           label: 'Settings',
           fontSize: fontSize,
-          onPressed: () => ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Settings coming soon'))),
+          onPressed: onSettings,
         ),
       ],
     );
@@ -973,12 +975,12 @@ class _PlayerProfile {
   });
 
   factory _PlayerProfile.guest() => _PlayerProfile(
-        username: 'Guest Player',
-        initials: 'GP',
-        level: 1,
-        xpPoints: 0,
-        nextLevelXp: _MenuScreenState._xpGoalForLevel(1),
-        coins: 0,
-        avatarId: '', // ← NEW
-      );
+    username: 'Guest Player',
+    initials: 'GP',
+    level: 1,
+    xpPoints: 0,
+    nextLevelXp: _MenuScreenState._xpGoalForLevel(1),
+    coins: 0,
+    avatarId: '', // ← NEW
+  );
 }

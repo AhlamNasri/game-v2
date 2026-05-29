@@ -5,12 +5,14 @@ class RoomDefinition {
   final String id;
   final String name;
   final String background;
+  final int unlockCost;
   final List<RoomItem> placedItems;
 
   RoomDefinition({
     required this.id,
     required this.name,
     required this.background,
+    this.unlockCost = 0,
     required List<RoomItem> placedItems,
   }) : placedItems = List<RoomItem>.of(placedItems);
 
@@ -18,6 +20,7 @@ class RoomDefinition {
     'id': id,
     'name': name,
     'background': background,
+    'unlockCost': unlockCost,
     'placedItems': placedItems.map((item) => item.toMap()).toList(),
   };
 
@@ -28,6 +31,7 @@ class RoomDefinition {
       name: (map['name'] ?? 'Room ${index + 1}').toString(),
       background: (map['background'] ?? RoomAssets.defaultBackground)
           .toString(),
+      unlockCost: ((map['unlockCost'] ?? 0) as num).toInt(),
       placedItems: items
           .whereType<Map>()
           .map((item) => RoomItem.fromMap(Map<String, dynamic>.from(item)))

@@ -30,6 +30,16 @@ class UserService {
     };
   }
 
+  Future<void> clearLocalUser() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.remove('uid'),
+      prefs.remove('user_uid'),
+      prefs.remove('user_nickname'),
+      prefs.remove('user_avatarId'),
+    ]);
+  }
+
   // Ta fonction de création modifiée pour inclure la sauvegarde automatique
   Future<UserModel> createAnonymousPlayer({
     required String nickname,

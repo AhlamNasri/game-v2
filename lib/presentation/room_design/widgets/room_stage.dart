@@ -16,8 +16,8 @@ class RoomStage extends StatelessWidget {
   final ValueChanged<RoomItem> onItemRotated;
   final void Function(RoomItem item, int direction) onItemLayerChanged;
   final ValueChanged<RoomItem> onItemRemoved;
-  final VoidCallback onItemChanged;
-  final VoidCallback onItemChangeEnd;
+  final ValueChanged<RoomItem> onItemChanged;     // was VoidCallback
+  final ValueChanged<RoomItem> onItemChangeEnd;   // was VoidCallback
   final double Function() currentCanvasScale;
 
   const RoomStage({
@@ -60,7 +60,7 @@ class RoomStage extends StatelessWidget {
                       onTap: onClearSelection,
                       child: Image.asset(
                         room.background,
-                        fit: BoxFit.fill, // stretch to exact screen size
+                        fit: BoxFit.fill,
                         gaplessPlayback: true,
                       ),
                     ),
@@ -111,8 +111,8 @@ class RoomStage extends StatelessWidget {
                                 onItemSelected(item);
                               }
                             },
-                            onChanged: onItemChanged,
-                            onChangeEnd: onItemChangeEnd,
+                            onChanged: onItemChanged,    // passes updated draft up
+                            onChangeEnd: onItemChangeEnd, // passes final draft up
                             onRotate: () => onItemRotated(item),
                             onLayerDown: () => onItemLayerChanged(item, -1),
                             onLayerUp: () => onItemLayerChanged(item, 1),

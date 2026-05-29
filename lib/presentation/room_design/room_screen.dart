@@ -19,104 +19,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
-String _resolveAssetPath(String itemName) {
-  if (itemName.contains('.')) {
-    return 'room_assets/$itemName';
-  }
-  return 'room_assets/$itemName.png';
-}
-
-class _AnyExtensionImage extends StatelessWidget {
-  final String itemName;
-  final double width;
-  final BoxFit fit;
-
-  const _AnyExtensionImage({
-    required this.itemName,
-    required this.width,
-  }) : fit = BoxFit.contain;
-
-  static const _extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
-
-  bool get _hasExtension => itemName.contains('.');
-
-  @override
-  Widget build(BuildContext context) {
-    if (_hasExtension) {
-      return Image.asset(
-        'room_assets/$itemName',
-        width: width,
-        fit: fit,
-        errorBuilder: (_, _, _) => _placeholder(),
-      );
-    }
-
-    return _FallbackImage(
-      basePath: 'room_assets/$itemName',
-      extensions: _extensions,
-      width: width,
-      fit: fit,
-    );
-  }
-
-  Widget _placeholder() => SizedBox(
-        width: width,
-        height: width,
-        child: const Center(
-          child: Icon(Icons.broken_image_outlined, color: Colors.grey),
-        ),
-      );
-}
-
-class _FallbackImage extends StatefulWidget {
-  final String basePath;
-  final List<String> extensions;
-  final double width;
-  final BoxFit fit;
-
-  const _FallbackImage({
-    required this.basePath,
-    required this.extensions,
-    required this.width,
-    required this.fit,
-  });
-
-  @override
-  State<_FallbackImage> createState() => _FallbackImageState();
-}
-
-class _FallbackImageState extends State<_FallbackImage> {
-  int _extIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    if (_extIndex >= widget.extensions.length) {
-      return SizedBox(
-        width: widget.width,
-        height: widget.width,
-        child: const Center(
-          child: Icon(Icons.broken_image_outlined, color: Colors.grey),
-        ),
-      );
-    }
-
-    final path = '${widget.basePath}.${widget.extensions[_extIndex]}';
-    return Image.asset(
-      path,
-      width: widget.width,
-      fit: widget.fit,
-      errorBuilder: (_, _, _) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() => _extIndex++);
-        });
-        return const SizedBox.shrink();
-      },
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-
 class RoomScreen extends StatefulWidget {
   const RoomScreen({super.key});
 
@@ -176,8 +78,9 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     super.initState();
     unawaited(_lockLandscapeOrientation());
     WidgetsBinding.instance.addObserver(this);
-    _authSubscription =
-        FirebaseAuth.instance.authStateChanges().listen((user) async {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
+      user,
+    ) async {
       if (user == null && _saveState?.userId != 'guest') {
         await _saveRoom(silent: true);
       }
@@ -220,10 +123,18 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         _selectedItem = null;
         _loading = false;
       });
-    } catch (_) {
+    } on RoomLoadException catch (error) {
       if (!mounted) return;
       setState(() => _loading = false);
-      _showMessage('Could not load room data.');
+      _showMessage(error.message);
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showMessage('Firebase room error: ${error.message ?? error.code}');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showMessage('Could not load room data: $error');
     }
   }
 
@@ -290,49 +201,105 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     return state.copyWith(rooms: updatedRooms);
   }
 
-  Future<void> _unlockSecondRoom() async {
+  // Replaces the old item with the updated one by object identity,
+  // then writes the result into _saveState cleanly.
+  void _updateItem(RoomItem updated, {required RoomItem old}) {
     final state = _saveState;
     if (state == null) return;
 
-    if (state.rooms.length >= 2) {
+    final updatedItems = _activeRoom.placedItems.map((i) {
+      return identical(i, old) ? updated : i;
+    }).toList();
+
+    final updatedRoom = RoomDefinition(
+      id: _activeRoom.id,
+      name: _activeRoom.name,
+      background: _activeRoom.background,
+      unlockCost: _activeRoom.unlockCost,
+      placedItems: updatedItems,
+    );
+
+    setState(() {
+      _saveState = _withUpdatedActiveRoom(state, updatedRoom);
+      // Keep _selectedItem in sync with the new object.
+      if (_selectedItem != null && identical(_selectedItem, old)) {
+        _selectedItem = updated;
+      }
+    });
+  }
+
+  Future<void> _unlockNextRoom() async {
+    final state = _saveState;
+    if (state == null) return;
+    final nextRoom = state.nextLockedRoom;
+    if (nextRoom == null) return;
+    final cost = nextRoom.unlockCost;
+    if (state.coins < cost) {
+      _showMessage('Need $cost coins to unlock ${nextRoom.name}');
+      return;
+    }
+
+    final confirmed = await _confirmRoomUnlock(nextRoom, state.coins);
+    if (!confirmed) return;
+
+    try {
+      final updated = await _repository.unlockNextRoom(state);
+      final inventory = await RoomAssets.loadAvailableItems(updated.inventory);
+      if (!mounted) return;
       setState(() {
-        _saveState = state.copyWith(activeRoomIndex: 1);
+        _saveState = updated;
+        _inventory = inventory;
         _selectedItem = null;
       });
-      return;
+      _showMessage('${nextRoom.name} unlocked!');
+    } on RoomUnlockException catch (error) {
+      if (!mounted) return;
+      _showMessage(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Could not unlock ${nextRoom.name}.');
     }
+  }
 
-    if (state.coins < RoomRepository.unlockSecondRoomCost) {
-      _showMessage(
-        'Need ${RoomRepository.unlockSecondRoomCost} coins to unlock Room 2',
-      );
-      return;
-    }
-
-    final rooms = [
-      ...state.rooms,
-      RoomDefinition(
-        id: 'room_2',
-        name: 'Room 2',
-        background: _activeRoom.background,
-        placedItems: const [],
+  Future<bool> _confirmRoomUnlock(RoomDefinition room, int coins) async {
+    final cost = room.unlockCost;
+    final remaining = coins - cost;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: RoomUi.softPanel,
+        title: Text('Unlock ${room.name}?'),
+        content: Text(
+          'This will spend $cost coins. Your balance will be $remaining coins.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.lock_open),
+            label: const Text('Unlock'),
+            style: FilledButton.styleFrom(
+              backgroundColor: RoomUi.accent,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
       ),
-    ];
-    setState(() {
-      _saveState = state.copyWith(
-        rooms: rooms,
-        activeRoomIndex: 1,
-        coins: state.coins - RoomRepository.unlockSecondRoomCost,
-      );
-      _selectedItem = null;
-    });
-    await _saveRoom(silent: true);
-    _showMessage('Room 2 unlocked');
+    );
+    return result ?? false;
   }
 
   void _switchRoom(int index) {
     final state = _saveState;
-    if (state == null || index == state.activeRoomIndex) return;
+    if (state == null ||
+        index == state.activeRoomIndex ||
+        index < 0 ||
+        index >= state.rooms.length) {
+      return;
+    }
     setState(() {
       _saveState = state.copyWith(activeRoomIndex: index);
       _selectedItem = null;
@@ -368,10 +335,12 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     if (state == null) return;
 
     final itemWidth = defaultRoomItemWidth(inventoryItem.id);
-    final stageWidth =
-        _stageSize.width == 0 ? box.size.width : _stageSize.width;
-    final stageHeight =
-        _stageSize.height == 0 ? box.size.height : _stageSize.height;
+    final stageWidth = _stageSize.width == 0
+        ? box.size.width
+        : _stageSize.width;
+    final stageHeight = _stageSize.height == 0
+        ? box.size.height
+        : _stageSize.height;
     final maxX = (stageWidth - itemWidth).clamp(0, double.infinity).toDouble();
     final maxY = (stageHeight - itemWidth).clamp(0, double.infinity).toDouble();
 
@@ -388,6 +357,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       id: _activeRoom.id,
       name: _activeRoom.name,
       background: _activeRoom.background,
+      unlockCost: _activeRoom.unlockCost,
       placedItems: [..._activeRoom.placedItems, newItem],
     );
 
@@ -402,34 +372,25 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     final state = _saveState;
     if (state == null) return;
 
+    final rotated = item.copyWith(
+      rotation: _normalizeRotation(item.rotation + math.pi / 12),
+    );
+
     final updatedItems = _activeRoom.placedItems.map((i) {
-      if (i == item) {
-        return RoomItem(
-          name: i.name,
-          asset: i.asset,
-          x: i.x,
-          y: i.y,
-          width: i.width,
-          rotation: _normalizeRotation(i.rotation + math.pi / 12),
-          layer: i.layer,
-        );
-      }
-      return i;
+      return identical(i, item) ? rotated : i;
     }).toList();
 
     final updatedRoom = RoomDefinition(
       id: _activeRoom.id,
       name: _activeRoom.name,
       background: _activeRoom.background,
+      unlockCost: _activeRoom.unlockCost,
       placedItems: updatedItems,
     );
 
     setState(() {
       _saveState = _withUpdatedActiveRoom(state, updatedRoom);
-      _selectedItem = updatedItems.firstWhere(
-        (i) => i.asset == item.asset && i.x == item.x && i.y == item.y,
-        orElse: () => updatedItems.last,
-      );
+      _selectedItem = rotated;
     });
     _queueAutoSave();
   }
@@ -438,47 +399,44 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     final state = _saveState;
     if (state == null || _activeRoom.placedItems.length < 2) return;
 
-    final items = _activeRoom.placedItems
-        .map((i) => RoomItem(
-              name: i.name,
-              asset: i.asset,
-              x: i.x,
-              y: i.y,
-              width: i.width,
-              rotation: i.rotation,
-              layer: i.layer,
-            ))
-        .toList();
+    // Build an ordered list using copyWith — no direct mutation.
+    final ordered = List<RoomItem>.of(_activeRoom.placedItems)
+      ..sort(_compareLayerOrder);
 
-    final ordered = List<RoomItem>.of(items)..sort(_compareLayerOrder);
-    for (var idx = 0; idx < ordered.length; idx++) {
-      ordered[idx].layer = idx;
-    }
+    // Assign normalised layer values immutably.
+    final normalised = [
+      for (var idx = 0; idx < ordered.length; idx++)
+        ordered[idx].copyWith(layer: idx),
+    ];
 
-    final index = ordered.indexWhere(
+    final index = normalised.indexWhere(
       (i) => i.asset == item.asset && i.x == item.x && i.y == item.y,
     );
     if (index == -1) return;
 
-    final targetIndex =
-        (index + direction).clamp(0, ordered.length - 1).toInt();
+    final targetIndex = (index + direction)
+        .clamp(0, normalised.length - 1)
+        .toInt();
     if (targetIndex == index) return;
 
-    final other = ordered[targetIndex];
-    final layer = ordered[index].layer;
-    ordered[index].layer = other.layer;
-    other.layer = layer;
+    // Swap layers between the two items.
+    final aLayer = normalised[index].layer;
+    final bLayer = normalised[targetIndex].layer;
+    final swapped = List<RoomItem>.of(normalised);
+    swapped[index] = normalised[index].copyWith(layer: bLayer);
+    swapped[targetIndex] = normalised[targetIndex].copyWith(layer: aLayer);
 
     final updatedRoom = RoomDefinition(
       id: _activeRoom.id,
       name: _activeRoom.name,
       background: _activeRoom.background,
-      placedItems: items,
+      unlockCost: _activeRoom.unlockCost,
+      placedItems: swapped,
     );
 
     setState(() {
       _saveState = _withUpdatedActiveRoom(state, updatedRoom);
-      _selectedItem = ordered[index];
+      _selectedItem = swapped[index];
     });
     _queueAutoSave();
   }
@@ -491,6 +449,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       id: _activeRoom.id,
       name: _activeRoom.name,
       background: _activeRoom.background,
+      unlockCost: _activeRoom.unlockCost,
       placedItems: _activeRoom.placedItems.where((i) => i != item).toList(),
     );
 
@@ -499,22 +458,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       _selectedItem = null;
     });
     _queueAutoSave();
-  }
-
-  void _markRoomChanged() {
-    final state = _saveState;
-    if (state == null) return;
-
-    final updatedRoom = RoomDefinition(
-      id: _activeRoom.id,
-      name: _activeRoom.name,
-      background: _activeRoom.background,
-      placedItems: List<RoomItem>.of(_activeRoom.placedItems),
-    );
-
-    setState(() {
-      _saveState = _withUpdatedActiveRoom(state, updatedRoom);
-    });
   }
 
   void _toggleInventory() {
@@ -526,7 +469,16 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
 
   void _navigateBack() {
     unawaited(_saveRoom(silent: true));
-    if (context.canPop()) context.pop();
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/menu');
+    }
+  }
+
+  void _navigateToMenu() {
+    unawaited(_saveRoom(silent: true));
+    context.go('/menu');
   }
 
   void _navigateToCloset() {
@@ -551,26 +503,22 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       final User? currentUser = FirebaseAuth.instance.currentUser;
 
       if (currentUser == null) {
-        if (context.mounted) Navigator.pop(context);
-        if (context.mounted) context.push('/login?roomId=none');
+        if (!mounted) return;
+        Navigator.pop(context);
+        context.push('/login?roomId=none');
         return;
       }
 
-      // ✅ Use UserService — single source for local user data
-      final Map<String, String?> localUser =
-          await UserService().getLocalUser();
+      final Map<String, String?> localUser = await UserService().getLocalUser();
 
-      final String myNickname =
-          localUser['nickname']?.isNotEmpty == true
-              ? localUser['nickname']!
-              : _playerName;
+      final String myNickname = localUser['nickname']?.isNotEmpty == true
+          ? localUser['nickname']!
+          : _playerName;
 
-      final String myAvatarId =
-          localUser['avatarId']?.isNotEmpty == true
-              ? localUser['avatarId']!
-              : 'avatar_1';
+      final String myAvatarId = localUser['avatarId']?.isNotEmpty == true
+          ? localUser['avatarId']!
+          : 'avatar_1';
 
-      // Level comes from _saveState loaded from Firestore users collection
       final int myLevel = _saveState?.playerLevel ?? 1;
 
       final String roomId = await LobbyService().findOrCreateLobby(
@@ -580,16 +528,15 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         userLevel: myLevel,
       );
 
-      if (context.mounted) Navigator.pop(context);
-      if (context.mounted) context.push('/lobby?roomId=$roomId');
+      if (!mounted) return;
+      Navigator.pop(context);
+      context.push('/lobby?roomId=$roomId');
     } catch (error) {
-      if (context.mounted) Navigator.pop(context);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Impossible de trouver une salle : $error')),
-        );
-      }
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible de trouver une salle : $error')),
+      );
     }
   }
 
@@ -605,9 +552,15 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       onItemRotated: _rotateItem,
       onItemLayerChanged: _changeItemLayer,
       onItemRemoved: _removeItem,
-      onItemChanged: _markRoomChanged,
-      onItemChangeEnd: () {
-        _markRoomChanged();
+      // Mid-gesture: update state so the stage repaints with the draft position.
+      onItemChanged: (updated) {
+        final old = _selectedItem;
+        if (old != null) _updateItem(updated, old: old);
+      },
+      // Gesture ended: commit final position and queue autosave.
+      onItemChangeEnd: (updated) {
+        final old = _selectedItem;
+        if (old != null) _updateItem(updated, old: old);
         _queueAutoSave();
       },
       currentCanvasScale: _currentCanvasScale,
@@ -630,6 +583,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
             coins: _saveState!.coins,
             rooms: _saveState!.rooms,
             activeRoomIndex: _saveState!.activeRoomIndex,
+            nextUnlockCost: _saveState!.nextUnlockCost,
             playerName: _playerName,
             playerLevel: _playerLevel,
             saving: _saving,
@@ -638,11 +592,12 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
               setState(() => _menuVisible = !_menuVisible);
             },
             onBack: _navigateBack,
+            onGoToMenu: _navigateToMenu,
             onGoToCloset: _navigateToCloset,
             onCompetitionMode: _openCompetitionMode,
             onSettings: _openSettings,
             onRoomSelected: _switchRoom,
-            onUnlockSecondRoom: _unlockSecondRoom,
+            onUnlockNextRoom: _unlockNextRoom,
             onToggleInventory: _toggleInventory,
           ),
         ],

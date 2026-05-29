@@ -11,8 +11,8 @@ class PlacedRoomItem extends StatefulWidget {
   final Size stageSize;
   final VoidCallback onSelect;
   final VoidCallback onToggleSelection;
-  final VoidCallback onChanged;
-  final VoidCallback onChangeEnd;
+  final ValueChanged<RoomItem> onChanged;
+  final ValueChanged<RoomItem> onChangeEnd;
   final VoidCallback onRotate;
   final VoidCallback onLayerDown;
   final VoidCallback onLayerUp;
@@ -40,12 +40,31 @@ class PlacedRoomItem extends StatefulWidget {
 }
 
 class _PlacedRoomItemState extends State<PlacedRoomItem> {
+  // Local draft used only during an active gesture.
+  // Committed to the parent via onChanged / onChangeEnd.
+  late RoomItem _draft;
   double? _gestureStartWidth;
   double? _gestureStartRotation;
 
   @override
+  void initState() {
+    super.initState();
+    _draft = widget.item;
+  }
+
+  @override
+  void didUpdateWidget(covariant PlacedRoomItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only sync from parent when no gesture is in progress,
+    // so mid-gesture frames aren't overwritten.
+    if (_gestureStartWidth == null && _gestureStartRotation == null) {
+      _draft = widget.item;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final item = widget.item;
+    final item = _draft;
     const toolbarWidth = 156.0;
     const toolbarHeight = 40.0;
     const toolbarGap = 8.0;
@@ -102,7 +121,7 @@ class _PlacedRoomItemState extends State<PlacedRoomItem> {
                   onScaleEnd: (_) {
                     _gestureStartWidth = null;
                     _gestureStartRotation = null;
-                    widget.onChangeEnd();
+                    widget.onChangeEnd(_draft);
                   },
                   child: Image.asset(
                     item.asset,
@@ -120,37 +139,37 @@ class _PlacedRoomItemState extends State<PlacedRoomItem> {
   }
 
   void _handleScaleUpdate(ScaleUpdateDetails details) {
-    final item = widget.item;
     setState(() {
       if (details.pointerCount >= 2) {
-        final startWidth = _gestureStartWidth ?? item.width;
-        final startRotation = _gestureStartRotation ?? item.rotation;
-        item.width = (startWidth * details.scale).clamp(42, 420).toDouble();
-        item.rotation = _normalizeRotation(startRotation + details.rotation);
-        _clampToStage(item);
+        final startWidth = _gestureStartWidth ?? _draft.width;
+        final startRotation = _gestureStartRotation ?? _draft.rotation;
+        final newWidth =
+            (startWidth * details.scale).clamp(42, 420).toDouble();
+        final newRotation =
+            _normalizeRotation(startRotation + details.rotation);
+        _draft = _draft.copyWith(width: newWidth, rotation: newRotation);
+        _draft = _clampToStage(_draft);
       } else {
         final scale = widget.currentCanvasScale().clamp(0.25, 4).toDouble();
-        final maxX = _maxCoordinate(widget.stageSize.width, item.width);
-        final maxY = _maxCoordinate(widget.stageSize.height, item.width);
-        item.x = (item.x + details.focalPointDelta.dx / scale)
-            .clamp(0, maxX)
-            .toDouble();
-        item.y = (item.y + details.focalPointDelta.dy / scale)
-            .clamp(0, maxY)
-            .toDouble();
+        final maxX = _maxCoordinate(widget.stageSize.width, _draft.width);
+        final maxY = _maxCoordinate(widget.stageSize.height, _draft.width);
+        _draft = _draft.copyWith(
+          x: (_draft.x + details.focalPointDelta.dx / scale)
+              .clamp(0, maxX)
+              .toDouble(),
+          y: (_draft.y + details.focalPointDelta.dy / scale)
+              .clamp(0, maxY)
+              .toDouble(),
+        );
       }
     });
-    widget.onChanged();
+    widget.onChanged(_draft);
   }
 
-  void _clampToStage(RoomItem item) {
-    item.x = item.x.clamp(
-      0,
-      _maxCoordinate(widget.stageSize.width, item.width),
-    );
-    item.y = item.y.clamp(
-      0,
-      _maxCoordinate(widget.stageSize.height, item.width),
+  RoomItem _clampToStage(RoomItem item) {
+    return item.copyWith(
+      x: item.x.clamp(0, _maxCoordinate(widget.stageSize.width, item.width)),
+      y: item.y.clamp(0, _maxCoordinate(widget.stageSize.height, item.width)),
     );
   }
 

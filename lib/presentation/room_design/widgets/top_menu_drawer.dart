@@ -9,17 +9,19 @@ class TopMenuDrawer extends StatelessWidget {
   final int coins;
   final List<RoomDefinition> rooms;
   final int activeRoomIndex;
+  final int? nextUnlockCost;
   final String playerName;
   final int playerLevel;
   final bool saving;
   final bool inventoryVisible;
   final VoidCallback onToggleMenu;
   final VoidCallback onBack;
+  final VoidCallback onGoToMenu;
   final VoidCallback onGoToCloset;
   final VoidCallback onCompetitionMode;
   final VoidCallback onSettings;
   final ValueChanged<int> onRoomSelected;
-  final VoidCallback onUnlockSecondRoom;
+  final VoidCallback onUnlockNextRoom;
   final VoidCallback onToggleInventory;
 
   const TopMenuDrawer({
@@ -28,17 +30,19 @@ class TopMenuDrawer extends StatelessWidget {
     required this.coins,
     required this.rooms,
     required this.activeRoomIndex,
+    required this.nextUnlockCost,
     required this.playerName,
     required this.playerLevel,
     required this.saving,
     required this.inventoryVisible,
     required this.onToggleMenu,
     required this.onBack,
+    required this.onGoToMenu,
     required this.onGoToCloset,
     required this.onCompetitionMode,
     required this.onSettings,
     required this.onRoomSelected,
-    required this.onUnlockSecondRoom,
+    required this.onUnlockNextRoom,
     required this.onToggleInventory,
   });
 
@@ -100,17 +104,19 @@ class TopMenuDrawer extends StatelessWidget {
                       coins: coins,
                       rooms: rooms,
                       activeRoomIndex: activeRoomIndex,
+                      nextUnlockCost: nextUnlockCost,
                       playerName: playerName,
                       playerLevel: playerLevel,
                       saving: saving,
                       inventoryVisible: inventoryVisible,
                       onClose: onToggleMenu,
                       onBack: onBack,
+                      onGoToMenu: onGoToMenu,
                       onGoToCloset: onGoToCloset,
                       onCompetitionMode: onCompetitionMode,
                       onSettings: onSettings,
                       onRoomSelected: onRoomSelected,
-                      onUnlockSecondRoom: onUnlockSecondRoom,
+                      onUnlockNextRoom: onUnlockNextRoom,
                       onToggleInventory: onToggleInventory,
                     ),
                   ),
@@ -128,39 +134,45 @@ class _MenuBar extends StatelessWidget {
   final int coins;
   final List<RoomDefinition> rooms;
   final int activeRoomIndex;
+  final int? nextUnlockCost;
   final String playerName;
   final int playerLevel;
   final bool saving;
   final bool inventoryVisible;
   final VoidCallback onClose;
   final VoidCallback onBack;
+  final VoidCallback onGoToMenu;
   final VoidCallback onGoToCloset;
   final VoidCallback onCompetitionMode;
   final VoidCallback onSettings;
   final ValueChanged<int> onRoomSelected;
-  final VoidCallback onUnlockSecondRoom;
+  final VoidCallback onUnlockNextRoom;
   final VoidCallback onToggleInventory;
 
   const _MenuBar({
     required this.coins,
     required this.rooms,
     required this.activeRoomIndex,
+    required this.nextUnlockCost,
     required this.playerName,
     required this.playerLevel,
     required this.saving,
     required this.inventoryVisible,
     required this.onClose,
     required this.onBack,
+    required this.onGoToMenu,
     required this.onGoToCloset,
     required this.onCompetitionMode,
     required this.onSettings,
     required this.onRoomSelected,
-    required this.onUnlockSecondRoom,
+    required this.onUnlockNextRoom,
     required this.onToggleInventory,
   });
 
   @override
   Widget build(BuildContext context) {
+    final nextRoomNumber = rooms.length + 1;
+
     final controls = <Widget>[
       RoomRoundIconButton(
         icon: Icons.keyboard_double_arrow_up,
@@ -171,6 +183,11 @@ class _MenuBar extends StatelessWidget {
         icon: Icons.arrow_back,
         tooltip: 'Back',
         onPressed: onBack,
+      ),
+      RoomRoundIconButton(
+        icon: Icons.home_outlined,
+        tooltip: 'Menu',
+        onPressed: onGoToMenu,
       ),
       if (!inventoryVisible) ProfileBadge(name: playerName, level: playerLevel),
       _AutosaveStatus(saving: saving),
@@ -185,7 +202,12 @@ class _MenuBar extends StatelessWidget {
           selected: index == activeRoomIndex,
           onSelected: () => onRoomSelected(index),
         ),
-      if (rooms.length < 2) _UnlockRoomButton(onPressed: onUnlockSecondRoom),
+      if (nextUnlockCost != null)
+        _UnlockRoomButton(
+          nextRoomNumber: nextRoomNumber,
+          unlockCost: nextUnlockCost!,
+          onPressed: onUnlockNextRoom,
+        ),
       _MenuActionChip(
         icon: Icons.checkroom,
         label: 'Go to Closet',
@@ -445,14 +467,20 @@ class _RoomChip extends StatelessWidget {
 
 class _UnlockRoomButton extends StatelessWidget {
   final VoidCallback onPressed;
+  final int nextRoomNumber;
+  final int unlockCost;
 
-  const _UnlockRoomButton({required this.onPressed});
+  const _UnlockRoomButton({
+    required this.onPressed,
+    required this.nextRoomNumber,
+    required this.unlockCost,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ActionChip(
       avatar: const Icon(Icons.add_home, size: 18, color: Colors.white),
-      label: const Text('Unlock Room 2'),
+      label: Text('Unlock Room $nextRoomNumber - $unlockCost'),
       onPressed: onPressed,
       backgroundColor: RoomUi.accent,
       shape: const StadiumBorder(),

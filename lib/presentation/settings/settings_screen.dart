@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:fashion_room_girls/data/services/soundtrack_service.dart';
+import 'package:fashion_room_girls/data/services/user_service.dart';
 import 'package:fashion_room_girls/presentation/room_design/theme/room_ui.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -58,6 +60,8 @@ class SettingsScreen extends ConsumerWidget {
                                   _SoundtrackPanel(service: soundtrack),
                                   const SizedBox(height: 12),
                                   _PreferencePanel(service: soundtrack),
+                                  const SizedBox(height: 12),
+                                  const _AccountPanel(),
                                 ],
                               ),
                             ),
@@ -81,6 +85,67 @@ class SettingsScreen extends ConsumerWidget {
     } else {
       context.go('/menu');
     }
+  }
+}
+
+class _AccountPanel extends StatelessWidget {
+  const _AccountPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final isSignedIn = user != null;
+
+    return _SettingsPanel(
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: RoomUi.accent.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isSignedIn ? Icons.logout : Icons.login,
+              color: RoomUi.accent,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              isSignedIn
+                  ? 'Sign out of this player profile.'
+                  : 'No player is signed in.',
+              style: const TextStyle(
+                color: RoomUi.ink,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: isSignedIn ? () => unawaited(_logout(context)) : null,
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Logout'),
+            style: FilledButton.styleFrom(
+              backgroundColor: RoomUi.accent,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: RoomUi.accent.withValues(alpha: 0.28),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    await FirebaseAuth.instance.signOut();
+    await UserService().clearLocalUser();
+    if (context.mounted) context.go('/login');
   }
 }
 
@@ -151,10 +216,7 @@ class _SoundtrackPanel extends StatelessWidget {
             secondary: const Icon(Icons.music_note, color: RoomUi.accent),
             title: const Text(
               'Soundtrack',
-              style: TextStyle(
-                color: RoomUi.ink,
-                fontWeight: FontWeight.w900,
-              ),
+              style: TextStyle(color: RoomUi.ink, fontWeight: FontWeight.w900),
             ),
             subtitle: Text(
               _statusText(service),

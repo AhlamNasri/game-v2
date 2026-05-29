@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,8 +14,8 @@ class SoundtrackService extends ChangeNotifier with WidgetsBindingObserver {
 
   static final SoundtrackService instance = SoundtrackService._();
 
-  static const assetPath = 'assets/audio/soundtrack.mp3';
-  static const _assetSourcePath = 'audio/soundtrack.mp3';
+  static const assetPath = 'assets/audio/Citypop girlypop 2000s.mp3';
+  static const _assetSourcePath = 'audio/Citypop girlypop 2000s.mp3';
   static const _enabledKey = 'soundtrack_enabled';
   static const _volumeKey = 'soundtrack_volume';
   static const defaultVolume = 0.35;
