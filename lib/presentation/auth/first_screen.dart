@@ -139,11 +139,11 @@ class _RegisterScreenState extends State<FirstScreen> {
                   vertical: 24.0,
                 ),
                 decoration: BoxDecoration(
-                  color: _cozyPinkBg.withOpacity(0.92),
+                  color: _cozyPinkBg.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(25),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
+                      color: Colors.black.withValues(alpha: 0.12),
                       blurRadius: 15,
                       offset: const Offset(0, 8),
                     ),
@@ -171,7 +171,7 @@ class _RegisterScreenState extends State<FirstScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: _cozyRoseTheme.withOpacity(0.5),
+                          color: _cozyRoseTheme.withValues(alpha: 0.5),
                           width: 1.5,
                         ),
                       ),
@@ -246,7 +246,7 @@ class _RegisterScreenState extends State<FirstScreen> {
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.06),
+                                        color: Colors.black.withValues(alpha: 0.06),
                                         blurRadius: 5,
                                       ),
                                     ],
