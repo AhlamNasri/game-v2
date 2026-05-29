@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/models/character_customization.dart';
 import '../data/models/clothing_item.dart';
+import '../data/repositories/character_repository.dart';
 import '../data/repositories/fashion_catalog.dart';
 
 final characterProvider =
@@ -10,9 +13,27 @@ final characterProvider =
 );
 
 class CharacterController extends Notifier<CharacterCustomization> {
+  final _repository = CharacterRepository();
+  bool _isLoadingFromFirebase = false;
+
   @override
   CharacterCustomization build() {
+    Future.microtask(loadSavedCharacter);
     return CharacterCustomization.initial();
+  }
+
+  Future<void> loadSavedCharacter() async {
+    _isLoadingFromFirebase = true;
+    try {
+      final savedCharacter = await _repository.load();
+      if (savedCharacter != null) {
+        state = savedCharacter;
+      }
+    } catch (_) {
+      // Keep the default character if Firebase is unavailable.
+    } finally {
+      _isLoadingFromFirebase = false;
+    }
   }
 
   void updateGender(CharacterGender gender) {
@@ -23,6 +44,7 @@ class CharacterController extends Notifier<CharacterCustomization> {
         faceAsset: '',
         outfit: {},
       );
+      _saveCurrent();
       return;
     }
 
@@ -32,22 +54,27 @@ class CharacterController extends Notifier<CharacterCustomization> {
       faceAsset: '',
       outfit: {},
     );
+    _saveCurrent();
   }
 
   void updateSkinTone(String skinTone) {
     state = state.copyWith(skinTone: skinTone);
+    _saveCurrent();
   }
 
   void updateHair(String hairAsset) {
     state = state.copyWith(hairAsset: hairAsset);
+    _saveCurrent();
   }
 
   void updateFace(String faceAsset) {
     state = state.copyWith(faceAsset: faceAsset);
+    _saveCurrent();
   }
 
   void resetOutfit() {
     state = state.copyWith(outfit: {});
+    _saveCurrent();
   }
 
   void wear(ClothingItem item) {
@@ -94,6 +121,7 @@ class CharacterController extends Notifier<CharacterCustomization> {
 
     outfit[item.category] = item;
     state = state.copyWith(outfit: outfit);
+    _saveCurrent();
   }
 
   // ✅ FIX : applyBestStyle utilise maintenant les bons vêtements
@@ -110,6 +138,7 @@ class CharacterController extends Notifier<CharacterCustomization> {
           ClothingCategory.shoes: FashionCatalog.byId('boots_black'),
         },
       );
+      _saveCurrent();
       return;
     }
 
@@ -120,5 +149,11 @@ class CharacterController extends Notifier<CharacterCustomization> {
         ClothingCategory.dresses: FashionCatalog.byId('outfit_magical_girl'),
       },
     );
+    _saveCurrent();
+  }
+
+  void _saveCurrent() {
+    if (_isLoadingFromFirebase) return;
+    unawaited(_repository.save(state).catchError((_) {}));
   }
 }
