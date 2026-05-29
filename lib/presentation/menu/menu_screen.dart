@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fashion_room_girls/data/services/lobbyService.dart';
-import 'package:fashion_room_girls/presentation/room_design/theme/room_ui.dart';
+import 'package:fashion_room_girls/data/services/lobby_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -36,8 +35,7 @@ class _MenuScreenState extends State<MenuScreen>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat();
-    _authSubscription =
-        FirebaseAuth.instance.authStateChanges().listen((user) {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
       _currentUser = user;
       unawaited(_loadProfile(user));
     });
@@ -62,8 +60,10 @@ class _MenuScreenState extends State<MenuScreen>
         });
         return;
       }
-      final snapshot =
-          await _firestore.collection('user_rooms').doc(user.uid).get();
+      final snapshot = await _firestore
+          .collection('user_rooms')
+          .doc(user.uid)
+          .get();
       final data = snapshot.data() ?? const <String, dynamic>{};
       final displayName = _displayNameFor(user);
       if (!mounted) return;
@@ -100,8 +100,11 @@ class _MenuScreenState extends State<MenuScreen>
     }
   }
 
-  static int _readInt(Map<String, dynamic> data, List<String> keys,
-      {required int fallback}) {
+  static int _readInt(
+    Map<String, dynamic> data,
+    List<String> keys, {
+    required int fallback,
+  }) {
     for (final key in keys) {
       final value = data[key];
       if (value is num) return value.toInt();
@@ -177,8 +180,7 @@ class _MenuScreenState extends State<MenuScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn =
-        _currentUser != null && !(_currentUser!.isAnonymous);
+    final isLoggedIn = _currentUser != null && !(_currentUser!.isAnonymous);
 
     return Scaffold(
       backgroundColor: _MenuTheme.bg,
@@ -282,11 +284,7 @@ class _MenuLayout extends StatelessWidget {
               children: [
                 _BrandHeader(h: h),
                 SizedBox(height: (h * 0.025).clamp(8.0, 16.0)),
-                _ProfileStrip(
-                  profile: profile,
-                  loading: loading,
-                  h: h,
-                ),
+                _ProfileStrip(profile: profile, loading: loading, h: h),
                 const Spacer(),
                 _BottomBar(
                   isLoggedIn: isLoggedIn,
@@ -421,8 +419,8 @@ class _ProfileStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final targetXp = profile.nextLevelXp <= 0 ? 1 : profile.nextLevelXp;
-    final progress =
-        (profile.xpPoints.clamp(0, targetXp) / targetXp).toDouble();
+    final progress = (profile.xpPoints.clamp(0, targetXp) / targetXp)
+        .toDouble();
     final avatarSize = (h * 0.09).clamp(32.0, 52.0);
     final nameSize = (h * 0.040).clamp(11.0, 16.0);
     final subSize = (h * 0.028).clamp(8.5, 11.0);
@@ -573,9 +571,9 @@ class _BottomBar extends StatelessWidget {
           icon: Icons.settings_outlined,
           label: 'Settings',
           fontSize: fontSize,
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Settings coming soon')),
-          ),
+          onPressed: () => ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Settings coming soon'))),
         ),
       ],
     );
@@ -920,7 +918,10 @@ class _AmbientGlowPainter extends CustomPainter {
         radius,
         Paint()
           ..shader = RadialGradient(
-            colors: [g.color.withValues(alpha: opacity), Colors.transparent],
+            colors: [
+              g.color.withValues(alpha: opacity),
+              Colors.transparent,
+            ],
           ).createShader(Rect.fromCircle(center: center, radius: radius))
           ..blendMode = BlendMode.screen,
       );
@@ -967,11 +968,11 @@ class _PlayerProfile {
   });
 
   factory _PlayerProfile.guest() => _PlayerProfile(
-        username: 'Guest Player',
-        initials: 'GP',
-        level: 1,
-        xpPoints: 0,
-        nextLevelXp: _MenuScreenState._xpGoalForLevel(1),
-        coins: 0,
-      );
+    username: 'Guest Player',
+    initials: 'GP',
+    level: 1,
+    xpPoints: 0,
+    nextLevelXp: _MenuScreenState._xpGoalForLevel(1),
+    coins: 0,
+  );
 }
