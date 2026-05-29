@@ -70,7 +70,7 @@ class CharacterSelectionScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: FilledButton.icon(
             onPressed: () {
-              Navigator.of(context).pushNamed('/dressing');
+              context.go('/dressing');
             },
             icon: const Icon(Icons.play_arrow_rounded),
             label: const Text('Commencer'),
