@@ -1,4 +1,3 @@
-// room_repository.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -11,8 +10,8 @@ class RoomRepository {
   final FirebaseAuth _auth;
 
   RoomRepository({FirebaseFirestore? firestore, FirebaseAuth? auth})
-      : _db = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+    : _db = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
 
   User? get currentUser => _auth.currentUser;
 
@@ -20,7 +19,6 @@ class RoomRepository {
     final user = currentUser;
     if (user == null) return RoomSaveState.guest();
 
-    // ✅ Read both collections in parallel
     final results = await Future.wait([
       _db.collection('user_rooms').doc(user.uid).get(),
       _db.collection('users').doc(user.uid).get(),
@@ -29,14 +27,13 @@ class RoomRepository {
     final roomSnap = results[0];
     final userSnap = results[1];
     final userData = userSnap.data() ?? {};
+    final coins = ((userData['coins'] ?? 0) as num).toInt();
+    final playerLevel = ((userData['level'] ?? 1) as num).toInt();
 
     if (!roomSnap.exists) {
-      // First time — create room doc with no coins/level (those stay in users)
       final initial = RoomSaveState.initial(
         user.uid,
-        coins: ((userData['coins'] ?? 0) as num).toInt(),
-        playerLevel: ((userData['level'] ?? 1) as num).toInt(),
-      );
+      ).copyWith(coins: coins, playerLevel: playerLevel);
       await _db
           .collection('user_rooms')
           .doc(user.uid)
@@ -47,13 +44,11 @@ class RoomRepository {
     return RoomSaveState.fromMap(
       user.uid,
       roomSnap.data() ?? {},
-      userData, // ✅ pass users data separately
-    );
+    ).copyWith(coins: coins, playerLevel: playerLevel);
   }
 
   Future<void> save(RoomSaveState state) async {
     if (state.userId == 'guest') return;
-    // ✅ Only saves room data, never touches coins/playerLevel
     await _db
         .collection('user_rooms')
         .doc(state.userId)
