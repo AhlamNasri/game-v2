@@ -21,7 +21,7 @@ class CharacterCustomization {
     return const CharacterCustomization(
       gender: CharacterGender.girl,
       skinTone: 'light',
-      hairAsset: 'assets/characters/hair/hair_blonde_twintails_fit.png',
+      hairAsset: 'hair1',
       faceAsset: '',
       outfit: {},
     );
@@ -33,6 +33,21 @@ class CharacterCustomization {
     }
 
     return 'assets/characters/body/${gender.name}_$skinTone.png';
+  }
+
+  String get hairStyle {
+    if (hairAsset.contains('hair2') ||
+        hairAsset.contains('bob_brown') ||
+        hairAsset.contains('messy_brown') ||
+        hairAsset.contains('undercut_blue')) {
+      return 'hair2';
+    }
+
+    return 'hair1';
+  }
+
+  String get headHairAsset {
+    return 'assets/characters/hair/${gender.name}_${skinTone}_head_$hairStyle.png';
   }
 
   CharacterCustomization copyWith({
