@@ -68,6 +68,7 @@
 import 'package:fashion_room_girls/presentation/auth/first_screen.dart';
 import 'package:fashion_room_girls/presentation/auth/login_screen.dart';
 import 'package:fashion_room_girls/presentation/auth/register_screen.dart';
+import 'package:fashion_room_girls/presentation/character_selection/character_selection_screen.dart';
 import 'package:fashion_room_girls/presentation/competition/competition_intro_screen.dart';
 import 'package:fashion_room_girls/presentation/competition/LobbyScreen.dart';
 import 'package:fashion_room_girls/presentation/competition/play_zone_screen.dart';
@@ -157,7 +158,6 @@ GoRouter createAppRouter(String initialRoute) {
       ),
 
       GoRoute(path: '/menu', builder: (context, state) => const MenuScreen()),
-      GoRoute(path: '/room', builder: (context, state) => const RoomScreen()),
       GoRoute(path: '/shop', builder: (context, state) => const ShopScreen()),
       GoRoute(
         path: '/character',
