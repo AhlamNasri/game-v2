@@ -52,7 +52,7 @@ class InventoryDrawer extends StatelessWidget {
   }
 }
 
-class _InventoryPanel extends StatelessWidget {
+class _InventoryPanel extends StatefulWidget {
   final List<InventoryItem> inventory;
   final VoidCallback onShopPressed;
   final VoidCallback onClose;
@@ -62,6 +62,68 @@ class _InventoryPanel extends StatelessWidget {
     required this.onShopPressed,
     required this.onClose,
   });
+
+  @override
+  State<_InventoryPanel> createState() => _InventoryPanelState();
+}
+
+class _InventoryPanelState extends State<_InventoryPanel> {
+  final _scrollController = ScrollController();
+  bool _canScrollUp = false;
+  bool _canScrollDown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_updateScrollButtons);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateScrollButtons());
+  }
+
+  @override
+  void didUpdateWidget(covariant _InventoryPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.inventory.length != widget.inventory.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _updateScrollButtons());
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_updateScrollButtons);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _updateScrollButtons() {
+    if (!_scrollController.hasClients || !mounted) return;
+    final position = _scrollController.position;
+    final nextCanScrollUp = position.pixels > position.minScrollExtent + 2;
+    final nextCanScrollDown = position.pixels < position.maxScrollExtent - 2;
+    if (_canScrollUp == nextCanScrollUp &&
+        _canScrollDown == nextCanScrollDown) {
+      return;
+    }
+    setState(() {
+      _canScrollUp = nextCanScrollUp;
+      _canScrollDown = nextCanScrollDown;
+    });
+  }
+
+  Future<void> _scrollInventory(double direction) async {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final viewport = position.viewportDimension;
+    final target = (position.pixels + viewport * 0.72 * direction)
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+
+    await _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+    _updateScrollButtons();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,26 +150,36 @@ class _InventoryPanel extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: _SidebarShopButton(onPressed: onShopPressed),
+                      child: _SidebarShopButton(
+                        onPressed: widget.onShopPressed,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     RoomRoundIconButton(
                       icon: Icons.keyboard_double_arrow_left,
                       tooltip: 'Hide inventory',
-                      onPressed: onClose,
+                      onPressed: widget.onClose,
                     ),
                   ],
                 ),
+              ),
+              _InventoryScrollButton(
+                icon: Icons.keyboard_arrow_up,
+                tooltip: 'Scroll inventory up',
+                enabled: _canScrollUp,
+                onPressed: () => _scrollInventory(-1),
               ),
               Expanded(
                 child: ScrollConfiguration(
                   behavior: const ScrollBehavior().copyWith(scrollbars: false),
                   child: Scrollbar(
+                    controller: _scrollController,
                     thumbVisibility: true,
                     thickness: 5,
                     radius: const Radius.circular(999),
                     child: GridView.builder(
-                      primary: true,
+                      controller: _scrollController,
+                      primary: false,
                       physics: const AlwaysScrollableScrollPhysics(
                         parent: BouncingScrollPhysics(),
                       ),
@@ -119,9 +191,9 @@ class _InventoryPanel extends StatelessWidget {
                             crossAxisSpacing: 10,
                             childAspectRatio: 1,
                           ),
-                      itemCount: inventory.length,
+                      itemCount: widget.inventory.length,
                       itemBuilder: (context, index) {
-                        final item = inventory[index];
+                        final item = widget.inventory[index];
                         return Draggable<InventoryItem>(
                           data: item,
                           feedback: Material(
@@ -156,7 +228,53 @@ class _InventoryPanel extends StatelessWidget {
                   ),
                 ),
               ),
+              _InventoryScrollButton(
+                icon: Icons.keyboard_arrow_down,
+                tooltip: 'Scroll inventory down',
+                enabled: _canScrollDown,
+                onPressed: () => _scrollInventory(1),
+              ),
+              const SizedBox(height: 8),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InventoryScrollButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  const _InventoryScrollButton({
+    required this.icon,
+    required this.tooltip,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        child: Material(
+          color: enabled
+              ? RoomUi.accent
+              : RoomUi.accent.withValues(alpha: 0.28),
+          shape: const StadiumBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: enabled ? onPressed : null,
+            child: SizedBox(
+              height: 30,
+              width: double.infinity,
+              child: Icon(icon, color: Colors.white, size: 22),
+            ),
           ),
         ),
       ),
@@ -192,7 +310,7 @@ class _InventoryTile extends StatelessWidget {
             item.asset,
             fit: BoxFit.contain,
             errorBuilder: (_, _, _) =>
-                const Icon(Icons.lock_open, color: Color(0xFFB43779)),
+                const Icon(Icons.chair_alt, color: Color(0xFFB43779)),
           ),
         ),
       ),

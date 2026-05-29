@@ -1,3 +1,4 @@
+import 'package:fashion_room_girls/data/services/soundtrack_service.dart';
 import 'package:fashion_room_girls/data/services/user_service.dart';
 import 'package:fashion_room_girls/presentation/room_design/theme/room_ui.dart';
 import 'package:fashion_room_girls/router.dart';
@@ -15,6 +16,8 @@ void main() async {
   ]);
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await SoundtrackService.instance.initialize();
+
   UserService userService = UserService();
   Map<String, String?> localUser = await userService.getLocalUser();
 

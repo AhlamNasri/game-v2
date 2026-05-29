@@ -223,10 +223,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 vertical: 20.0,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.35),
+                                color: Colors.white.withValues(alpha: 0.35),
                                 borderRadius: BorderRadius.circular(30),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.5),
+                                  color: Colors.white.withValues(alpha: 0.5),
                                 ),
                               ),
                               child: Column(
@@ -277,7 +277,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         BoxShadow(
                                           color: const Color(
                                             0xFFA594F9,
-                                          ).withOpacity(0.4),
+                                          ).withValues(alpha: 0.4),
                                           blurRadius: 8,
                                           offset: const Offset(0, 4),
                                         ),
@@ -363,7 +363,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFDDE1).withOpacity(0.8),
+        color: const Color(0xFFFFDDE1).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(20),
       ),
       child: TextField(

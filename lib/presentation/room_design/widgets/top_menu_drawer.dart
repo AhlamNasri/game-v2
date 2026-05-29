@@ -199,7 +199,7 @@ class _MenuBar extends StatelessWidget {
         onPressed: onCompetitionMode,
       ),
       RoomRoundIconButton(
-        icon: inventoryVisible ? Icons.inventory_2 : Icons.inventory_2_outlined,
+        icon: inventoryVisible ? Icons.chair : Icons.chair_alt_outlined,
         tooltip: inventoryVisible ? 'Hide inventory' : 'Show inventory',
         onPressed: onToggleInventory,
       ),

@@ -1033,14 +1033,14 @@ class _LobbyScreenState extends State<LobbyScreen> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: hasPlayer ? Colors.purple : Colors.white.withOpacity(0.5),
+              color: hasPlayer ? Colors.purple : Colors.white.withValues(alpha: 0.5),
               width: 2,
             ),
           ),
           child: CircleAvatar(
             radius: 28,
             backgroundColor: hasPlayer
-                ? Colors.white.withOpacity(0.8)
+                ? Colors.white.withValues(alpha: 0.8)
                 : Colors.black12,
             child: hasPlayer
                 ? Image.asset('assets/avatars/${player!['avatarId']}.png')
@@ -1106,13 +1106,13 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 width: MediaQuery.of(context).size.width * 0.8,
                 height: MediaQuery.of(context).size.height * 0.75,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(
-                    0.85,
+                  color: Colors.white.withValues(
+                    alpha: 0.85,
                   ), // Transparence de la carte
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -1164,7 +1164,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                               child: CircularProgressIndicator(
                                 value: count / 4,
                                 strokeWidth: 8,
-                                backgroundColor: Colors.purple.withOpacity(0.1),
+                                backgroundColor: Colors.purple.withValues(alpha: 0.1),
                                 valueColor: const AlwaysStoppedAnimation<Color>(
                                   Colors.purple,
                                 ),

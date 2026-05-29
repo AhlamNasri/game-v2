@@ -1,3 +1,4 @@
+// room_save_state.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/room_definition.dart';
@@ -9,6 +10,7 @@ class RoomSaveState {
   final List<String> inventory;
   final List<RoomDefinition> rooms;
   final int activeRoomIndex;
+  // coins and playerLevel are read-only from users collection, not stored here
   final int coins;
   final int playerLevel;
 
@@ -21,43 +23,49 @@ class RoomSaveState {
     required this.playerLevel,
   });
 
-  factory RoomSaveState.initial(String userId) => RoomSaveState(
-    userId: userId,
-    inventory: const [],
-    rooms: [
-      RoomDefinition(
-        id: 'room_1',
-        name: 'Room 1',
-        background: RoomAssets.defaultBackground,
-        placedItems: const [],
-      ),
-    ],
-    activeRoomIndex: 0,
-    coins: 2500,
-    playerLevel: 5,
-  );
+  factory RoomSaveState.initial(String userId, {int coins = 0, int playerLevel = 1}) =>
+      RoomSaveState(
+        userId: userId,
+        inventory: const [],
+        rooms: [
+          RoomDefinition(
+            id: 'room_1',
+            name: 'Room 1',
+            background: RoomAssets.defaultBackground,
+            placedItems: const [],
+          ),
+        ],
+        activeRoomIndex: 0,
+        coins: coins,           // ✅ comes from users collection
+        playerLevel: playerLevel, // ✅ comes from users collection
+      );
 
   factory RoomSaveState.guest() => RoomSaveState(
-    userId: 'guest',
-    inventory: const [],
-    rooms: [
-      RoomDefinition(
-        id: 'room_1',
-        name: 'Guest Room',
-        background: RoomAssets.defaultBackground,
-        placedItems: const [],
-      ),
-    ],
-    activeRoomIndex: 0,
-    coins: 0,
-    playerLevel: 5,
-  );
+        userId: 'guest',
+        inventory: const [],
+        rooms: [
+          RoomDefinition(
+            id: 'room_1',
+            name: 'Guest Room',
+            background: RoomAssets.defaultBackground,
+            placedItems: const [],
+          ),
+        ],
+        activeRoomIndex: 0,
+        coins: 0,
+        playerLevel: 1,
+      );
 
-  factory RoomSaveState.fromMap(String userId, Map<String, dynamic> data) {
-    final rawRooms = data['rooms'] is List ? data['rooms'] as List : null;
-    final legacyItems = data['placedItems'] is List
-        ? data['placedItems'] as List
+  factory RoomSaveState.fromMap(
+    String userId,
+    Map<String, dynamic> roomData,
+    Map<String, dynamic> userData, // ✅ now receives users collection data
+  ) {
+    final rawRooms = roomData['rooms'] is List ? roomData['rooms'] as List : null;
+    final legacyItems = roomData['placedItems'] is List
+        ? roomData['placedItems'] as List
         : const [];
+
     final parsedRooms = rawRooms == null || rawRooms.isEmpty
         ? [
             RoomDefinition(
@@ -66,24 +74,21 @@ class RoomSaveState {
               background: RoomAssets.defaultBackground,
               placedItems: legacyItems
                   .whereType<Map>()
-                  .map(
-                    (item) => RoomItem.fromMap(Map<String, dynamic>.from(item)),
-                  )
+                  .map((item) => RoomItem.fromMap(Map<String, dynamic>.from(item)))
                   .toList(),
             ),
           ]
         : rawRooms
-              .whereType<Map>()
-              .toList()
-              .asMap()
-              .entries
-              .map(
-                (entry) => RoomDefinition.fromMap(
+            .whereType<Map>()
+            .toList()
+            .asMap()
+            .entries
+            .map((entry) => RoomDefinition.fromMap(
                   Map<String, dynamic>.from(entry.value),
                   entry.key,
-                ),
-              )
-              .toList();
+                ))
+            .toList();
+
     final rooms = parsedRooms.isEmpty
         ? [
             RoomDefinition(
@@ -95,14 +100,15 @@ class RoomSaveState {
           ]
         : parsedRooms;
 
-    final active = ((data['activeRoomIndex'] ?? 0) as num).toInt();
+    final active = ((roomData['activeRoomIndex'] ?? 0) as num).toInt();
+
     return RoomSaveState(
       userId: userId,
-      inventory: List<String>.from(data['inventory'] ?? const []),
+      inventory: List<String>.from(roomData['inventory'] ?? const []),
       rooms: rooms,
       activeRoomIndex: active.clamp(0, rooms.length - 1).toInt(),
-      coins: ((data['coins'] ?? 0) as num).toInt(),
-      playerLevel: ((data['playerLevel'] ?? data['level'] ?? 5) as num).toInt(),
+      coins: ((userData['coins'] ?? 0) as num).toInt(),           // ✅ from users
+      playerLevel: ((userData['level'] ?? 1) as num).toInt(),     // ✅ from users
     );
   }
 
@@ -124,12 +130,11 @@ class RoomSaveState {
   }
 
   Map<String, dynamic> toMap() => {
-    'userId': userId,
-    'inventory': inventory,
-    'rooms': rooms.map((room) => room.toMap()).toList(),
-    'activeRoomIndex': activeRoomIndex,
-    'coins': coins,
-    'playerLevel': playerLevel,
-    'updatedAt': FieldValue.serverTimestamp(),
-  };
+        'userId': userId,
+        'inventory': inventory,
+        'rooms': rooms.map((room) => room.toMap()).toList(),
+        'activeRoomIndex': activeRoomIndex,
+        // ✅ coins and playerLevel are NOT saved here, they belong to users collection
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
 }

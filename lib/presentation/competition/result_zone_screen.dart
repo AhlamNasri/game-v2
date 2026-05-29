@@ -354,7 +354,7 @@ class ResultZoneScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFDCA1A7).withOpacity(0.3),
+                          color: const Color(0xFFDCA1A7).withValues(alpha: 0.3),
                           blurRadius: 20,
                           spreadRadius: 2,
                         ),
@@ -415,7 +415,7 @@ class ResultZoneScreen extends StatelessWidget {
                           right: 0,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFF704E52).withOpacity(0.85),
+                              color: const Color(0xFF704E52).withValues(alpha: 0.85),
                               borderRadius: const BorderRadius.only(
                                 bottomLeft: Radius.circular(24),
                                 bottomRight: Radius.circular(24),
@@ -494,7 +494,7 @@ class ResultZoneScreen extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFDCA1A7).withOpacity(0.2),
+                              color: const Color(0xFFDCA1A7).withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(

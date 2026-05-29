@@ -534,6 +534,12 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     context.go('/dress-up');
   }
 
+  void _openSettings() {
+    unawaited(_saveRoom(silent: true));
+    setState(() => _menuVisible = false);
+    context.push('/settings');
+  }
+
   Future<void> _openCompetitionMode() async {
     showDialog(
       context: context,
@@ -634,7 +640,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
             onBack: _navigateBack,
             onGoToCloset: _navigateToCloset,
             onCompetitionMode: _openCompetitionMode,
-            onSettings: () => _showMessage('Settings screen coming soon'),
+            onSettings: _openSettings,
             onRoomSelected: _switchRoom,
             onUnlockSecondRoom: _unlockSecondRoom,
             onToggleInventory: _toggleInventory,

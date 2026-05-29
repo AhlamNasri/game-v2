@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fashion_room_girls/data/services/lobby_service.dart';
-import 'package:fashion_room_girls/presentation/room_design/theme/room_ui.dart';
+import 'package:fashion_room_girls/data/services/lobbyService.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -81,6 +80,7 @@ class _MenuScreenState extends State<MenuScreen>
             ),
           ),
           coins: _readInt(data, ['coins', 'gems'], fallback: 0),
+          avatarId: data['avatarId'] as String? ?? '',
         );
         _loadingProfile = false;
       });
@@ -94,6 +94,7 @@ class _MenuScreenState extends State<MenuScreen>
           xpPoints: 0,
           nextLevelXp: _xpGoalForLevel(1),
           coins: 0,
+          avatarId: '',
         );
         _loadingProfile = false;
       });
@@ -131,6 +132,7 @@ class _MenuScreenState extends State<MenuScreen>
     return words.map((w) => w.characters.first.toUpperCase()).join();
   }
 
+  // ── FIXED: passes all required LobbyService parameters ──
   Future<void> _startCompetitionMode() async {
     showDialog(
       context: context,
@@ -140,13 +142,21 @@ class _MenuScreenState extends State<MenuScreen>
     try {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       final String myUid = currentUser?.uid ?? '';
-      const int myLevel = 1;
+      final String myNickname = _profile.username;
+      final String myAvatarId =
+          _profile.avatarId.isNotEmpty ? _profile.avatarId : _profile.initials;
+      final int myLevel = _profile.level;
+
       final String roomId = await LobbyService().findOrCreateLobby(
         currentUserId: myUid,
+        currentUserNickname: myNickname,
+        currentUserAvatarId: myAvatarId,
         userLevel: myLevel,
       );
+
       if (!mounted) return;
       Navigator.pop(context);
+
       if (currentUser != null && currentUser.isAnonymous) {
         context.push('/login?roomId=$roomId');
       } else {
@@ -206,7 +216,7 @@ class _MenuScreenState extends State<MenuScreen>
             Positioned.fill(
               child: AnimatedBuilder(
                 animation: _shimmerController!,
-                builder: (_, __) => CustomPaint(
+                builder: (_, _) => CustomPaint(
                   painter: _AmbientGlowPainter(_shimmerController!.value),
                 ),
               ),
@@ -579,7 +589,7 @@ class _BottomBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-//  Nav button  ← compact, content-fitted, centred
+//  Nav button
 // ─────────────────────────────────────────────
 
 class _NavButton extends StatefulWidget {
@@ -612,7 +622,6 @@ class _NavButtonState extends State<_NavButton> {
     final labelSize = (widget.h * 0.048).clamp(13.0, 19.0);
     final badgeSize = (widget.h * 0.028).clamp(8.0, 11.0);
     final iconSize = (widget.h * 0.060).clamp(18.0, 26.0);
-    // Vertical padding scales with screen height so the card hugs its content.
     final vPad = (widget.h * 0.030).clamp(12.0, 20.0);
 
     final bg = _hovered
@@ -653,7 +662,6 @@ class _NavButtonState extends State<_NavButton> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Accent bar — stretches to intrinsic height automatically
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     width: _hovered ? 4 : 3,
@@ -665,7 +673,6 @@ class _NavButtonState extends State<_NavButton> {
                       ),
                     ),
                   ),
-                  // Content — centred both axes, padded to fit text
                   Expanded(
                     child: Padding(
                       padding: EdgeInsets.symmetric(
@@ -703,7 +710,6 @@ class _NavButtonState extends State<_NavButton> {
                       ),
                     ),
                   ),
-                  // Chevron — vertically centred
                   Padding(
                     padding: const EdgeInsets.only(right: 14),
                     child: Center(
@@ -868,7 +874,7 @@ class _ThinProgressBar extends StatelessWidget {
       tween: Tween<double>(begin: 0, end: progress.clamp(0.0, 1.0)),
       duration: const Duration(milliseconds: 700),
       curve: Curves.easeOutCubic,
-      builder: (_, value, __) => ClipRRect(
+      builder: (_, value, _) => ClipRRect(
         borderRadius: BorderRadius.circular(999),
         child: Stack(
           children: [
@@ -952,6 +958,7 @@ class _PlayerProfile {
   final int xpPoints;
   final int nextLevelXp;
   final int coins;
+  final String avatarId; // ← NEW
 
   const _PlayerProfile({
     required this.username,
@@ -960,6 +967,7 @@ class _PlayerProfile {
     required this.xpPoints,
     required this.nextLevelXp,
     required this.coins,
+    required this.avatarId, // ← NEW
   });
 
   factory _PlayerProfile.guest() => _PlayerProfile(
@@ -969,5 +977,6 @@ class _PlayerProfile {
         xpPoints: 0,
         nextLevelXp: _MenuScreenState._xpGoalForLevel(1),
         coins: 0,
+        avatarId: '', // ← NEW
       );
 }

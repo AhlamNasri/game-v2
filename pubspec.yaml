@@ -42,6 +42,7 @@ dependencies:
   go_router: ^17.2.3
   google_sign_in: ^7.2.0
   shared_preferences: ^2.5.5
+  audioplayers: ^6.6.0
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +79,7 @@ flutter:
       - assets/login/
       - assets/
       - assets/background/
+      - assets/audio/
       - assets/clothes/chaussures/
       - assets/clothes/accessoires/
       - assets/clothes/robes/

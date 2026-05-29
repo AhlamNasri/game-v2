@@ -77,6 +77,7 @@ import 'package:fashion_room_girls/presentation/competition/voting_zone_screen.d
 import 'package:fashion_room_girls/presentation/dress_up/dress_up_screen.dart';
 import 'package:fashion_room_girls/presentation/menu/menu_screen.dart';
 import 'package:fashion_room_girls/presentation/shop/shop_screen.dart';
+import 'package:fashion_room_girls/presentation/settings/settings_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'presentation/room_design/room_screen.dart';
 
@@ -86,6 +87,7 @@ GoRouter createAppRouter(String initialRoute) {
     initialLocation:
         initialRoute, // 👈 C'est ici qu'on applique la route dynamique !
     routes: [
+      GoRoute(path: '/', builder: (context, state) => FirstScreen()),
       // C'est ici que l'enfant arrivera directement (sa chambre) s'il a déjà un compte enregistré !
       GoRoute(path: '/room', builder: (context, state) => const RoomScreen()),
 
@@ -156,8 +158,11 @@ GoRouter createAppRouter(String initialRoute) {
       ),
 
       GoRoute(path: '/menu', builder: (context, state) => const MenuScreen()),
-      GoRoute(path: '/room', builder: (context, state) => const RoomScreen()),
       GoRoute(path: '/shop', builder: (context, state) => const ShopScreen()),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
+      ),
       GoRoute(
         path: '/dress-up',
         builder: (context, state) => const DressUpScreen(),
