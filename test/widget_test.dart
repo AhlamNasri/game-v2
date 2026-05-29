@@ -7,9 +7,10 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MyApp());
+    await tester.pump();
 
     expect(find.text('Store'), findsOneWidget);
-    expect(find.textContaining('12 500 TC'), findsOneWidget);
+    expect(find.text('0 TC'), findsOneWidget);
     expect(find.text('Chaussures'), findsOneWidget);
     expect(find.text('Baskets Coeur'), findsOneWidget);
     expect(find.text('ACHETER >'), findsWidgets);
