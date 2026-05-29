@@ -115,6 +115,19 @@ class _PreviewPanel extends StatelessWidget {
               ),
         ),
         const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => context.go('/menu'),
+            icon: const Icon(Icons.arrow_back_rounded),
+            label: const Text('Menu'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF7E3565),
+              textStyle: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
         DecoratedBox(
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.72),
