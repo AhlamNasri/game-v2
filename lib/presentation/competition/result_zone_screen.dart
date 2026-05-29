@@ -319,6 +319,9 @@ class ResultZoneScreen extends StatelessWidget {
           var winnerData = podiumList[0].data() as Map<String, dynamic>;
           bool winnerIsBot = winnerData['isBot'] ?? false;
           int winnerVotes = winnerData['votesCount'] ?? 0;
+          final winnerOutfitData =
+              winnerData['outfitData'] as Map<String, dynamic>?;
+          final winnerImageUrl = winnerOutfitData?['imageUrl'] as String? ?? '';
 
           // 👑 AJOUTÉ : Récupération du vrai pseudo pour le vainqueur
           String winnerName =
@@ -366,32 +369,10 @@ class ResultZoneScreen extends StatelessWidget {
                         // Image du vainqueur
                         Padding(
                           padding: const EdgeInsets.all(16.0),
-                          child: winnerIsBot
-                              ? Image.asset(
-                                  winnerData['outfitData']?['imageUrl'] ??
-                                      'assets/bots/poupee_chic.png',
-                                  fit: BoxFit.contain,
-                                )
-                              : const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.stars,
-                                        size: 60,
-                                        color: Colors.amber,
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        "Incroyable Look !",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                          child: _ResultOutfitImage(
+                            imageUrl: winnerImageUrl,
+                            isBot: winnerIsBot,
+                          ),
                         ),
 
                         // Badge couronne en haut à droite
@@ -535,6 +516,55 @@ class ResultZoneScreen extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _ResultOutfitImage extends StatelessWidget {
+  final String imageUrl;
+  final bool isBot;
+
+  const _ResultOutfitImage({required this.imageUrl, required this.isBot});
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const _ResultFallback(),
+      );
+    }
+
+    if (isBot) {
+      return Image.asset(
+        imageUrl.isEmpty ? 'assets/bots/poupee_chic.png' : imageUrl,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const _ResultFallback(),
+      );
+    }
+
+    return const _ResultFallback();
+  }
+}
+
+class _ResultFallback extends StatelessWidget {
+  const _ResultFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.stars, size: 60, color: Colors.amber),
+          SizedBox(height: 8),
+          Text(
+            'Incroyable Look !',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+          ),
+        ],
       ),
     );
   }

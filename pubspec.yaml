@@ -73,10 +73,7 @@ flutter:
       - assets/avatars/
       - assets/background_lobby.png
       - assets/bots/
-    
-      - room_assets/
       - room_items_shop/
-      - assets/login/
       - assets/
       - assets/background/
       - assets/audio/
@@ -85,10 +82,15 @@ flutter:
       - assets/clothes/robes/
       - assets/clothes/pantalons/
       - assets/clothes/tshirts/
-      - assets/furniture/lits/
-      - assets/furniture/lampes/
-      - assets/furniture/bureaux/
-      - assets/furniture/tapis/
+      - assets/characters/
+      - assets/characters/body/
+      - assets/characters/hair/
+      - assets/characters/face/
+      - assets/characters/clothes/dresses/
+      - assets/characters/clothes/shoes/
+      - assets/characters/clothes/pants/
+      - assets/characters/clothes/shirts/
+      - assets/characters/clothes/accessories/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

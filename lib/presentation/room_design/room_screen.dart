@@ -531,7 +531,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
 
   void _navigateToCloset() {
     unawaited(_saveRoom(silent: true));
-    context.go('/dress-up');
+    context.go('/character');
   }
 
   void _openSettings() {

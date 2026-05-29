@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ShopItem {
   final String name;
@@ -10,6 +13,14 @@ class ShopItem {
     required this.price,
     required this.imagePath,
   });
+
+  String get id => imagePath;
+
+  String get roomInventoryId {
+    final fileName = imagePath.split('/').last;
+    final dot = fileName.lastIndexOf('.');
+    return dot == -1 ? fileName : fileName.substring(0, dot);
+  }
 }
 
 class ShopCategory {
@@ -34,9 +45,11 @@ class ShopScreen extends StatefulWidget {
 class _ShopScreenState extends State<ShopScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  int userCoins = 12500;
+  int userCoins = 0;
   int selectedClothesCategory = 0;
   int selectedFurnitureCategory = 0;
+  bool _isLoadingCoins = true;
+  bool _isBuying = false;
 
   final List<ShopCategory> clothesCategories = const [
     ShopCategory(
@@ -154,17 +167,32 @@ class _ShopScreenState extends State<ShopScreen>
         ShopItem(
           name: 'Lit Coeur',
           price: 800,
-          imagePath: 'assets/furniture/lits/l1.jpeg',
+          imagePath: 'assets/furniture/lits/bed3.png',
         ),
         ShopItem(
           name: 'Lit Nuage',
           price: 950,
-          imagePath: 'assets/furniture/lits/l2.jpeg',
+          imagePath: 'assets/furniture/lits/chair.png',
         ),
         ShopItem(
           name: 'Lit Princesse',
           price: 1200,
-          imagePath: 'assets/furniture/lits/l3.jpeg',
+          imagePath: 'assets/furniture/lits/heartchair.png',
+        ),
+        ShopItem(
+          name: 'Lit Etoile',
+          price: 1100,
+          imagePath: 'assets/furniture/lits/pinkChair-removebg-preview.png',
+        ),
+        ShopItem(
+          name: 'sofa1',
+          price: 1000,
+          imagePath: 'assets/furniture/lits/sofa.png',
+        ),
+        ShopItem(
+          name: 'sofa2',
+          price: 1300,
+          imagePath: 'assets/furniture/lits/sofa2.png',
         ),
       ],
     ),
@@ -175,17 +203,17 @@ class _ShopScreenState extends State<ShopScreen>
         ShopItem(
           name: 'Lampe Lune',
           price: 350,
-          imagePath: 'assets/furniture/lampes/o1.jpeg',
+          imagePath: 'assets/furniture/lampes/chandelier.png',
         ),
         ShopItem(
           name: 'Lampe Coeur',
           price: 400,
-          imagePath: 'assets/furniture/lampes/o2.jpeg',
+          imagePath: 'assets/furniture/lampes/greendeco.png',
         ),
         ShopItem(
           name: 'Lampe Etoile',
           price: 450,
-          imagePath: 'assets/furniture/lampes/o3.jpeg',
+          imagePath: 'assets/furniture/lampes/lamp.png',
         ),
       ],
     ),
@@ -194,40 +222,70 @@ class _ShopScreenState extends State<ShopScreen>
       icon: Icons.desk,
       items: [
         ShopItem(
-          name: 'Bureau Rose',
+          name: 'Bureau',
           price: 900,
-          imagePath: 'assets/furniture/bureaux/b1.jpeg',
+          imagePath: 'assets/furniture/bureaux/desk.png',
         ),
         ShopItem(
-          name: 'Coiffeuse Princesse',
+          name: 'Bureau Feu',
           price: 1500,
-          imagePath: 'assets/furniture/bureaux/b2.jpeg',
+          imagePath: 'assets/furniture/bureaux/fire.png',
         ),
         ShopItem(
-          name: 'Chaise Bow-tique',
+          name: 'Bureau Piano',
           price: 400,
-          imagePath: 'assets/furniture/bureaux/b3.jpeg',
+          imagePath: 'assets/furniture/bureaux/piano.png',
+        ),
+        ShopItem(
+          name: 'book shelf',
+          price: 350,
+          imagePath: 'assets/furniture/bureaux/book_shelf.png',
         ),
       ],
     ),
     ShopCategory(
-      label: 'Tapis',
+      label: 'Decorations',
       icon: Icons.layers,
       items: [
         ShopItem(
           name: 'Tapis Nuage',
           price: 300,
-          imagePath: 'assets/furniture/tapis/t1.jpeg',
+          imagePath: 'assets/furniture/tapis/bath.png',
         ),
         ShopItem(
           name: 'Tapis Coeur',
           price: 350,
-          imagePath: 'assets/furniture/tapis/t2.jpeg',
+          imagePath: 'assets/furniture/tapis/cam.png',
         ),
         ShopItem(
           name: 'Tapis Etoile',
           price: 420,
-          imagePath: 'assets/furniture/tapis/t3.jpeg',
+          imagePath: 'assets/furniture/tapis/clock.png',
+        ),
+        ShopItem(
+          name: 'curtain',
+          price: 300,
+          imagePath: 'assets/furniture/tapis/curtain.png',
+        ),
+        ShopItem(
+          name: 'mirror',
+          price: 450,
+          imagePath: 'assets/furniture/tapis/mirroir.png',
+        ),
+        ShopItem(
+          name: 'fridge',
+          price: 1000,
+          imagePath: 'assets/furniture/tapis/fridge.png',
+        ),
+        ShopItem(
+          name: 'pc',
+          price: 1500,
+          imagePath: 'assets/furniture/tapis/pc.png',
+        ),
+        ShopItem(
+          name: 'sink',
+          price: 500,
+          imagePath: 'assets/furniture/tapis/sink.png',
         ),
       ],
     ),
@@ -237,6 +295,7 @@ class _ShopScreenState extends State<ShopScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadUserCoins();
   }
 
   @override
@@ -252,7 +311,99 @@ class _ShopScreenState extends State<ShopScreen>
     );
   }
 
-  void _showPurchaseConfirmation(ShopItem item) {
+  Future<void> _loadUserCoins() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('Utilisateur non connecte');
+      }
+
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+      final snapshot = await userRef.get();
+      final data = snapshot.data() ?? {};
+      final coins = (data['coins'] ?? 0) as int;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('user_coins', coins);
+
+      if (!mounted) return;
+      setState(() {
+        userCoins = coins;
+        _isLoadingCoins = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoadingCoins = false);
+      _showMessage(error.toString());
+    }
+  }
+
+  Future<void> buyItem({
+    required String itemId,
+    required int price,
+    String? roomInventoryId,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('Utilisateur non connecte');
+
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
+    final roomRef = FirebaseFirestore.instance
+        .collection('user_rooms')
+        .doc(user.uid);
+
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snapshot = await transaction.get(userRef);
+      final data = snapshot.data() ?? {};
+
+      final coins = (data['coins'] ?? 0) as int;
+      final ownedItems = List<String>.from(data['ownedItems'] ?? []);
+
+      if (ownedItems.contains(itemId)) {
+        throw Exception('Article deja achete');
+      }
+
+      if (coins < price) {
+        throw Exception('Coins insuffisants');
+      }
+
+      transaction.update(userRef, {
+        'coins': coins - price,
+        'ownedItems': FieldValue.arrayUnion([itemId]),
+      });
+
+      if (roomInventoryId != null) {
+        transaction.set(roomRef, {
+          'inventory': FieldValue.arrayUnion([roomInventoryId]),
+        }, SetOptions(merge: true));
+      }
+    });
+
+    final updatedSnapshot = await userRef.get();
+    final updatedData = updatedSnapshot.data() ?? {};
+    final updatedCoins = (updatedData['coins'] ?? 0) as int;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('user_coins', updatedCoins);
+
+    if (!mounted) return;
+    setState(() => userCoins = updatedCoins);
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message.replaceFirst('Exception: ', ''))),
+      );
+    });
+  }
+
+  void _showPurchaseConfirmation(ShopItem item, {required bool isFurniture}) {
     final remainingCoins = userCoins - item.price;
 
     showDialog<void>(
@@ -347,10 +498,27 @@ class _ShopScreenState extends State<ShopScreen>
                         label: 'CONFIRMER',
                         color: const Color(0xFFB59ADF),
                         textColor: Colors.white,
-                        onPressed: userCoins >= item.price
-                            ? () {
-                                setState(() => userCoins -= item.price);
+                        onPressed: userCoins >= item.price && !_isBuying
+                            ? () async {
                                 Navigator.of(context).pop();
+                                setState(() => _isBuying = true);
+
+                                try {
+                                  await buyItem(
+                                    itemId: item.id,
+                                    price: item.price,
+                                    roomInventoryId: isFurniture
+                                        ? item.roomInventoryId
+                                        : null,
+                                  );
+                                  _showMessage('${item.name} achete');
+                                } catch (error) {
+                                  _showMessage(error.toString());
+                                } finally {
+                                  if (mounted) {
+                                    setState(() => _isBuying = false);
+                                  }
+                                }
                               }
                             : null,
                       ),
@@ -421,7 +589,11 @@ class _ShopScreenState extends State<ShopScreen>
                       ),
                       child: Column(
                         children: [
-                          _CoinsBar(coins: _formatCoins(userCoins)),
+                          _CoinsBar(
+                            coins: _isLoadingCoins
+                                ? '...'
+                                : _formatCoins(userCoins),
+                          ),
                           const SizedBox(height: 8),
                           _CategoryTabs(controller: _tabController),
                           const SizedBox(height: 8),
@@ -455,7 +627,10 @@ class _ShopScreenState extends State<ShopScreen>
                                         () => selectedClothesCategory = index,
                                       );
                                     },
-                                    onBuy: _showPurchaseConfirmation,
+                                    onBuy: (item) => _showPurchaseConfirmation(
+                                      item,
+                                      isFurniture: false,
+                                    ),
                                   ),
                                   _CategorizedShop(
                                     categories: furnitureCategories,
@@ -465,7 +640,10 @@ class _ShopScreenState extends State<ShopScreen>
                                         () => selectedFurnitureCategory = index,
                                       );
                                     },
-                                    onBuy: _showPurchaseConfirmation,
+                                    onBuy: (item) => _showPurchaseConfirmation(
+                                      item,
+                                      isFurniture: true,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -563,23 +741,29 @@ class _CategoryTabs extends StatelessWidget {
         ),
         tabs: const [
           Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.checkroom, size: 17),
-                SizedBox(width: 6),
-                Text('VETEMENTS'),
-              ],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.checkroom, size: 17),
+                  SizedBox(width: 6),
+                  Text('VETEMENTS'),
+                ],
+              ),
             ),
           ),
           Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.weekend, size: 17),
-                SizedBox(width: 6),
-                Text('MEUBLES'),
-              ],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.weekend, size: 17),
+                  SizedBox(width: 6),
+                  Text('MEUBLES'),
+                ],
+              ),
             ),
           ),
         ],

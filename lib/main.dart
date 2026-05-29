@@ -4,8 +4,9 @@ import 'package:fashion_room_girls/presentation/room_design/theme/room_ui.dart';
 import 'package:fashion_room_girls/router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'firebase_options.dart';
 
 void main() async {
@@ -18,13 +19,13 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await SoundtrackService.instance.initialize();
 
-  UserService userService = UserService();
-  Map<String, String?> localUser = await userService.getLocalUser();
+  final userService = UserService();
+  final localUser = await userService.getLocalUser();
 
-  String targetRoute = '/first';
+  var targetRoute = '/first';
 
   if (localUser['uid'] != null) {
-    print("Bienvenue de retour, joueur : ${localUser['nickname']}");
+    debugPrint("Bienvenue de retour, joueur : ${localUser['nickname']}");
     targetRoute = '/room';
   }
   runApp(ProviderScope(child: MyApp(initialRoute: targetRoute)));

@@ -676,6 +676,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../data/services/character_capture_service.dart';
 
 class PlayZoneScreen extends StatefulWidget {
   final String roomId;
@@ -735,11 +736,17 @@ class _PlayZoneScreenState extends State<PlayZoneScreen> {
       final lobbyRef = firestore.collection('lobbies').doc(widget.roomId);
 
       // 1. 👗 RÉCUPÉRATION DES DONNÉES DU JOUEUR HUMAIN
-      Map<String, dynamic> myOutfitData = {
+      final latestCapture = await CharacterCaptureService().latestCapture();
+      Map<String, dynamic> myOutfitData = latestCapture == null
+          ? {
         'characterBase': 'skin_light',
         'clothes': ['dress_chic_01', 'shoes_gold_03'],
         'hair': 'hair_blonde_long',
-      };
+      }
+          : {
+              ...latestCapture.data,
+              'imageUrl': latestCapture.downloadUrl,
+            };
 
       // 2. Enregistrement de la tenue de l'humain avec son pseudo
       await lobbyRef
