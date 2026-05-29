@@ -98,16 +98,30 @@ class CharacterRepository {
     return CharacterCustomization(
       gender: gender,
       skinTone: data['skinTone'] as String? ?? 'light',
-      hairAsset: data['hairAsset'] as String? ?? _defaultHairFor(gender),
+      hairAsset: _normalizeHairAsset(
+        data['hairAsset'] as String? ?? _defaultHairFor(gender),
+      ),
       faceAsset: data['faceAsset'] as String? ?? '',
       outfit: outfit,
     );
   }
 
   String _defaultHairFor(CharacterGender gender) {
-    if (gender == CharacterGender.boy) {
-      return 'assets/characters/hair/hair_short_blue_fit.png';
+    return 'hair1';
+  }
+
+  String _normalizeHairAsset(String hairAsset) {
+    if (hairAsset == 'hair1' || hairAsset == 'hair2') {
+      return hairAsset;
     }
-    return 'assets/characters/hair/hair_blonde_twintails_fit.png';
+
+    if (hairAsset.contains('hair2') ||
+        hairAsset.contains('bob_brown') ||
+        hairAsset.contains('messy_brown') ||
+        hairAsset.contains('undercut_blue')) {
+      return 'hair2';
+    }
+
+    return 'hair1';
   }
 }

@@ -52,8 +52,8 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
           : categories.first;
     }
     final bottomHeight = isWide
-        ? screenSize.height.clamp(290.0, 370.0).toDouble()
-        : screenSize.height.clamp(330.0, 430.0).toDouble();
+        ? screenSize.height.clamp(270.0, 320.0).toDouble()
+        : screenSize.height.clamp(320.0, 410.0).toDouble();
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFD9E8),
@@ -62,7 +62,7 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final stageHeight = constraints.maxHeight - bottomHeight - 78;
-            final previewHeight = stageHeight.clamp(300.0, 560.0).toDouble();
+            final previewHeight = stageHeight.clamp(330.0, 590.0).toDouble();
             final previewWidth = (previewHeight * 0.72)
                 .clamp(isWide ? 250.0 : 210.0, isWide ? 390.0 : 290.0)
                 .toDouble();
@@ -81,17 +81,18 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
                           decoration: const BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                Color(0xFFFFEDF5),
-                                Color(0xFFF7A7CB),
+                                Color(0xFFFFF0F8),
+                                Color(0xFFF4D9FF),
+                                Color(0xFFFFC9DE),
                               ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
                           ),
                         ),
                       ),
                       Positioned.fill(
-                        bottom: bottomHeight - 28,
+                        bottom: bottomHeight + 18,
                         child: Center(
                           child: CharacterPreview(
                             character: character,
@@ -373,9 +374,9 @@ class _DressingPanel extends ConsumerWidget {
                     separatorBuilder: (_, __) => const SizedBox(width: 14),
                     itemBuilder: (context, index) {
                       final item = clothes[index];
-                      final selected =
-                          character.outfit[selectedCategory]?.id == item.id ||
-                              character.hairAsset == item.assetPath;
+                      final selected = selectedCategory == ClothingCategory.hair
+                          ? _sameHairStyle(character.hairAsset, item.assetPath)
+                          : character.outfit[selectedCategory]?.id == item.id;
                       return _ClothingTile(
                         item: item,
                         selected: selected,
@@ -423,6 +424,21 @@ class _DressingPanel extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  bool _sameHairStyle(String currentHair, String itemHair) {
+    return _hairStyle(currentHair) == _hairStyle(itemHair);
+  }
+
+  String _hairStyle(String hairAsset) {
+    if (hairAsset.contains('hair2') ||
+        hairAsset.contains('bob_brown') ||
+        hairAsset.contains('messy_brown') ||
+        hairAsset.contains('undercut_blue')) {
+      return 'hair2';
+    }
+
+    return 'hair1';
   }
 }
 

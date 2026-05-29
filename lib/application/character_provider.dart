@@ -40,7 +40,7 @@ class CharacterController extends Notifier<CharacterCustomization> {
     if (gender == CharacterGender.boy) {
       state = state.copyWith(
         gender: gender,
-        hairAsset: 'assets/characters/hair/hair_short_blue_fit.png',
+        hairAsset: 'hair1',
         faceAsset: '',
         outfit: {},
       );
@@ -50,7 +50,7 @@ class CharacterController extends Notifier<CharacterCustomization> {
 
     state = state.copyWith(
       gender: gender,
-      hairAsset: 'assets/characters/hair/hair_blonde_twintails_fit.png',
+      hairAsset: 'hair1',
       faceAsset: '',
       outfit: {},
     );
@@ -130,7 +130,7 @@ class CharacterController extends Notifier<CharacterCustomization> {
   void applyBestStyle() {
     if (state.gender == CharacterGender.boy) {
       state = state.copyWith(
-        hairAsset: 'assets/characters/hair/hair_short_blue_fit.png',
+        hairAsset: 'hair1',
         faceAsset: '',
         outfit: {
           ClothingCategory.shirts: FashionCatalog.byId('jacket_leather_black'),
@@ -143,7 +143,7 @@ class CharacterController extends Notifier<CharacterCustomization> {
     }
 
     state = state.copyWith(
-      hairAsset: 'assets/characters/hair/hair_blonde_twintails_fit.png',
+      hairAsset: 'hair1',
       faceAsset: '',
       outfit: {
         ClothingCategory.dresses: FashionCatalog.byId('outfit_magical_girl'),

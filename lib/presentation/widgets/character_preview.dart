@@ -26,6 +26,7 @@ class CharacterPreview extends StatelessWidget {
       ClothingCategory.shoes,
     ];
     final accessory = character.outfit[ClothingCategory.accessories];
+    final headHairAsset = character.headHairAsset;
 
     return SizedBox(
       width: width,
@@ -50,8 +51,8 @@ class CharacterPreview extends StatelessWidget {
                 ),
             if (character.hairAsset.isNotEmpty)
               _CharacterLayer(
-                assetPath: character.hairAsset,
-                spec: _CharacterLayerSpec.forAsset(character.hairAsset),
+                assetPath: headHairAsset,
+                spec: _CharacterLayerSpec.forAsset(headHairAsset),
               ),
             if (accessory != null)
               _CharacterLayer(
@@ -128,35 +129,50 @@ class _CharacterLayerSpec {
   );
 
   static _CharacterLayerSpec forAsset(String assetPath) {
+    if (assetPath.contains('_head_hair')) {
+      return const _CharacterLayerSpec(
+        centerX: 0.5,
+        widthFactor: 0.56,
+        heightFactor: 0.43,
+        topFactor: -0.01,
+      );
+    }
+
+    if (assetPath.contains('hair_short_blue') ||
+        assetPath.contains('hair_messy_brown') ||
+        assetPath.contains('hair_spiky_black') ||
+        assetPath.contains('hair_undercut_blue')) {
+      return const _CharacterLayerSpec(
+        centerX: 0.5,
+        widthFactor: 1.18,
+        heightFactor: 0.86,
+        topFactor: -0.075,
+      );
+    }
+
+    if (assetPath.contains('hair_blonde_twintails') ||
+        assetPath.contains('hair_bob_brown') ||
+        assetPath.contains('hair_twintails_pink') ||
+        assetPath.contains('hair_pink_cat_ears')) {
+      return const _CharacterLayerSpec(
+        centerX: 0.5,
+        widthFactor: 1.08,
+        heightFactor: 0.78,
+        topFactor: -0.025,
+      );
+    }
+
     if (assetPath.contains('/hair/')) {
       return const _CharacterLayerSpec(
         centerX: 0.5,
-        widthFactor: 1.05,
-        heightFactor: 0.78,
+        widthFactor: 1.12,
+        heightFactor: 0.82,
         topFactor: -0.03,
       );
     }
 
     if (assetPath.contains('_fit.')) {
       return fullCanvas;
-    }
-
-    if (assetPath.contains('hair_long_pink')) {
-      return const _CharacterLayerSpec(
-        centerX: 0.5,
-        widthFactor: 0.64,
-        heightFactor: 0.53,
-        topFactor: 0.00,
-      );
-    }
-
-    if (assetPath.contains('hair_short_blue')) {
-      return const _CharacterLayerSpec(
-        centerX: 0.5,
-        widthFactor: 0.72,
-        heightFactor: 0.36,
-        topFactor: 0.02,
-      );
     }
 
     if (assetPath.contains('dress_gothic_lolita')) {
