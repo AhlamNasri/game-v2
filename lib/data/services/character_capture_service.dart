@@ -90,4 +90,13 @@ class CharacterCaptureService {
         .where((capture) => capture.downloadUrl.isNotEmpty)
         .toList();
   }
+
+  Future<CharacterCapture?> latestCapture() async {
+    final captures = await listCaptures();
+    if (captures.isEmpty) {
+      return null;
+    }
+
+    return captures.first;
+  }
 }

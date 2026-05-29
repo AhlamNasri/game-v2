@@ -364,11 +364,11 @@ class _DressingPanel extends ConsumerWidget {
           ),
           const Divider(height: 1, color: Color(0xFFFFD6E4)),
           SizedBox(
-            height: 160,
+            height: 132,
             child: clothes.isEmpty
                 ? const Center(child: Text('Aucun item disponible.'))
                 : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
+                    padding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
                     scrollDirection: Axis.horizontal,
                     itemCount: clothes.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 14),
@@ -390,7 +390,7 @@ class _DressingPanel extends ConsumerWidget {
           const Divider(height: 1, color: Color(0xFFFFD6E4)),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(26, 16, 26, 20),
+              padding: const EdgeInsets.fromLTRB(26, 10, 26, 14),
               child: Row(
                 children: [
                   Expanded(
@@ -584,8 +584,9 @@ class _ActionButton extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+        child: Container(
+          height: 66,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -611,7 +612,7 @@ class _ActionButton extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -622,7 +623,7 @@ class _ActionButton extends StatelessWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontSize: 12,
                       ),
                     ),
                   ],
