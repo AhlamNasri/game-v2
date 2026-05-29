@@ -168,7 +168,7 @@ GoRouter createAppRouter(String initialRoute) {
       ),
       GoRoute(
         path: '/dress-up',
-        builder: (context, state) => const DressingScreen(),
+        builder: (context, state) => const CharacterSelectionScreen(),
       ),
     ],
   );

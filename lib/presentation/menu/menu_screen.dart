@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fashion_room_girls/data/services/lobby_service.dart';
+import 'package:fashion_room_girls/data/services/lobbyService.dart';
 import 'package:fashion_room_girls/presentation/room_design/theme/room_ui.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -140,9 +140,13 @@ class _MenuScreenState extends State<MenuScreen>
     try {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       final String myUid = currentUser?.uid ?? '';
-      const int myLevel = 1;
+      final String myNickname = _profile.username;
+      const String myAvatarId = 'avatar_1';
+      final int myLevel = _profile.level;
       final String roomId = await LobbyService().findOrCreateLobby(
         currentUserId: myUid,
+        currentUserNickname: myNickname,
+        currentUserAvatarId: myAvatarId,
         userLevel: myLevel,
       );
       if (!mounted) return;

@@ -92,10 +92,6 @@ flutter:
       - assets/characters/clothes/pants/
       - assets/characters/clothes/shirts/
       - assets/characters/clothes/accessories/
-      - assets/furniture/lits/
-      - assets/furniture/lampes/
-      - assets/furniture/bureaux/
-      - assets/furniture/tapis/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

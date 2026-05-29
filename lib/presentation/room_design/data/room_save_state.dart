@@ -21,7 +21,11 @@ class RoomSaveState {
     required this.playerLevel,
   });
 
-  factory RoomSaveState.initial(String userId) => RoomSaveState(
+  factory RoomSaveState.initial(
+    String userId, {
+    int coins = 2500,
+    int playerLevel = 5,
+  }) => RoomSaveState(
     userId: userId,
     inventory: const [],
     rooms: [
@@ -33,8 +37,8 @@ class RoomSaveState {
       ),
     ],
     activeRoomIndex: 0,
-    coins: 2500,
-    playerLevel: 5,
+    coins: coins,
+    playerLevel: playerLevel,
   );
 
   factory RoomSaveState.guest() => RoomSaveState(
@@ -53,7 +57,11 @@ class RoomSaveState {
     playerLevel: 5,
   );
 
-  factory RoomSaveState.fromMap(String userId, Map<String, dynamic> data) {
+  factory RoomSaveState.fromMap(
+    String userId,
+    Map<String, dynamic> data, [
+    Map<String, dynamic> userData = const {},
+  ]) {
     final rawRooms = data['rooms'] is List ? data['rooms'] as List : null;
     final legacyItems = data['placedItems'] is List
         ? data['placedItems'] as List
@@ -101,8 +109,11 @@ class RoomSaveState {
       inventory: List<String>.from(data['inventory'] ?? const []),
       rooms: rooms,
       activeRoomIndex: active.clamp(0, rooms.length - 1).toInt(),
-      coins: ((data['coins'] ?? 0) as num).toInt(),
-      playerLevel: ((data['playerLevel'] ?? data['level'] ?? 5) as num).toInt(),
+      coins: ((userData['coins'] ?? data['coins'] ?? 0) as num).toInt(),
+      playerLevel:
+          ((userData['level'] ?? data['playerLevel'] ?? data['level'] ?? 5)
+                  as num)
+              .toInt(),
     );
   }
 
