@@ -68,6 +68,15 @@ flutter:
   assets:
       - room_assets/
       - assets/login/
+      - assets/characters/
+      - assets/characters/body/
+      - assets/characters/hair/
+      - assets/characters/face/
+      - assets/characters/clothes/dresses/
+      - assets/characters/clothes/shoes/
+      - assets/characters/clothes/pants/
+      - assets/characters/clothes/shirts/
+      - assets/characters/clothes/accessories/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,6 +13,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  void _openCharacterSelection() {
+    Navigator.of(context).pushReplacementNamed('/character');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,6 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   print(
                                     "Succès ! L'utilisateur est connecté :${userCredential.user!.uid}",
                                   );
+                                  if (mounted) _openCharacterSelection();
                                 } on FirebaseAuthException catch (e) {
                                   print("Échec de la connexion...");
                                   if (e.code == 'user-not-found') {
@@ -165,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           // Petit Bouton Register
                           TextButton(
                             onPressed: () {
-                              context.go('/register');
+                              Navigator.of(context).pushNamed('/register');
                             },
                             // onPressed: () => Navigator.pop(context),
                             style: TextButton.styleFrom(
@@ -268,6 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       print(
                                         "Connecté avec succès à Firebase : ${userCredential.user!.uid}",
                                       );
+                                      if (mounted) _openCharacterSelection();
                                     }
                                   } on FirebaseException catch (e) {
                                     print("Erreur : $e");
@@ -292,6 +298,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     print(
                                       "Connecté en tant qu'invité ! UID : ${userCredential.user!.uid}",
                                     );
+                                    if (mounted) _openCharacterSelection();
                                   } on FirebaseAuthException catch (e) {
                                     print(
                                       "Erreur de connexion anonyme : ${e.message}",

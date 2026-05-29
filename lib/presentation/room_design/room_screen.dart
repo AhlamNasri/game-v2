@@ -1,425 +1,358 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
-import '../../data/services/room_service.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class RoomItem {
-  final String name;
-  final String asset; // full filename, e.g. "bed.png", "photo.jpeg", "bg.webp"
-  double x;
-  double y;
-  double width;
+import '../../application/character_provider.dart';
+import '../dressing/dressing_screen.dart';
+import '../widgets/character_preview.dart';
 
-  RoomItem({
-    required this.name,
-    required this.asset,
-    this.x = 100,
-    this.y = 100,
-    this.width = 120,
-  });
-
-  Map<String, dynamic> toMap() => {
-        'name': name,
-        'asset': asset,
-        'x': x,
-        'y': y,
-        'width': width,
-      };
-
-  factory RoomItem.fromMap(Map<String, dynamic> map) => RoomItem(
-        name: map['name'],
-        asset: map['asset'],
-        x: (map['x'] as num).toDouble(),
-        y: (map['y'] as num).toDouble(),
-        width: (map['width'] as num).toDouble(),
-      );
-}
-
-/// Returns the full asset path for an item name.
-/// It checks a priority list of extensions and falls back to the
-/// name itself if it already contains an extension.
-String _resolveAssetPath(String itemName) {
-  // If the inventory already stores full filenames (e.g. "bed.jpeg"), use as-is.
-  if (itemName.contains('.')) {
-    return 'room_assets/$itemName';
-  }
-  // Otherwise fall back to the extension-priority helper.
-  // At runtime Flutter will throw if the asset doesn't exist, so keep your
-  // pubspec.yaml assets list up-to-date with the actual files.
-  return 'room_assets/$itemName.png'; // default; see _AssetImage below
-}
-
-/// A widget that tries multiple extensions in order and renders the first one
-/// that exists, showing a placeholder on failure.
-class _AnyExtensionImage extends StatelessWidget {
-  final String itemName;
-  final double width;
-  final BoxFit fit;
-
-  const _AnyExtensionImage({
-    required this.itemName,
-    required this.width,
-    this.fit = BoxFit.contain,
-  });
-
-  static const _extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
-
-  /// If itemName already carries an extension just use it directly.
-  bool get _hasExtension => itemName.contains('.');
-
-  @override
-  Widget build(BuildContext context) {
-    if (_hasExtension) {
-      return Image.asset(
-        'room_assets/$itemName',
-        width: width,
-        fit: fit,
-        errorBuilder: (_, __, ___) => _placeholder(),
-      );
-    }
-
-    // Build a chain of Image.asset widgets, each falling back to the next
-    // extension on error.
-    return _FallbackImage(
-      basePath: 'room_assets/$itemName',
-      extensions: _extensions,
-      width: width,
-      fit: fit,
-    );
-  }
-
-  Widget _placeholder() => SizedBox(
-        width: width,
-        height: width,
-        child: const Center(
-          child: Icon(Icons.broken_image_outlined, color: Colors.grey),
-        ),
-      );
-}
-
-/// Tries [extensions] one by one, falling through on asset-load errors.
-class _FallbackImage extends StatefulWidget {
-  final String basePath;
-  final List<String> extensions;
-  final double width;
-  final BoxFit fit;
-
-  const _FallbackImage({
-    required this.basePath,
-    required this.extensions,
-    required this.width,
-    required this.fit,
-  });
-
-  @override
-  State<_FallbackImage> createState() => _FallbackImageState();
-}
-
-class _FallbackImageState extends State<_FallbackImage> {
-  int _extIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    if (_extIndex >= widget.extensions.length) {
-      return SizedBox(
-        width: widget.width,
-        height: widget.width,
-        child: const Center(
-          child: Icon(Icons.broken_image_outlined, color: Colors.grey),
-        ),
-      );
-    }
-
-    final path = '${widget.basePath}.${widget.extensions[_extIndex]}';
-    return Image.asset(
-      path,
-      width: widget.width,
-      fit: widget.fit,
-      errorBuilder: (_, __, ___) {
-        // Try the next extension on the next frame.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() => _extIndex++);
-        });
-        return const SizedBox.shrink();
-      },
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-
-class RoomScreen extends StatefulWidget {
+class RoomScreen extends ConsumerStatefulWidget {
   const RoomScreen({super.key});
 
   @override
-  State<RoomScreen> createState() => _RoomScreenState();
+  ConsumerState<RoomScreen> createState() => _RoomScreenState();
 }
 
-class _RoomScreenState extends State<RoomScreen> {
-  final RoomService _roomService = RoomService();
+class _RoomScreenState extends ConsumerState<RoomScreen> {
+  final _characterCaptureKey = GlobalKey();
 
-  List<String> inventory = [];
-  List<RoomItem> placedItems = [];
-  bool loading = true;
-  RoomItem? _selectedItem;
-  double _baseWidth = 120;
+  Future<void> _captureCharacter() async {
+    final boundary = _characterCaptureKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (boundary == null) {
+      return;
+    }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
+    final image = await boundary.toImage(pixelRatio: 3);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    final bytes = data?.buffer.asUint8List();
+    if (!mounted || bytes == null) {
+      return;
+    }
 
-  Future<void> _loadData() async {
-    final inv = await _roomService.loadInventory();
-    final placed = await _roomService.loadRoom();
-    setState(() {
-      inventory = inv;
-      placedItems = placed.map((e) => RoomItem.fromMap(e)).toList();
-      loading = false;
-    });
-  }
-
-  Future<void> _saveRoom() async {
-    await _roomService.saveRoom(placedItems.map((e) => e.toMap()).toList());
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Room saved! 🎀')),
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _CaptureDialog(bytes: bytes),
     );
   }
 
-  double _getItemWidth(String itemName) {
-    // Strip extension for the size-lookup so "bed.jpeg" and "bed" both work.
-    final base = itemName.contains('.')
-        ? itemName.substring(0, itemName.lastIndexOf('.'))
-        : itemName;
-    switch (base) {
-      case 'bed':     return 200;
-      case 'sofa':    return 220;
-      case 'chair':   return 100;
-      case 'lamp':    return 90;
-      case 'plant':   return 90;
-      case 'clock':   return 70;
-      case 'tableau': return 110;
-      case 'deco':   return 80;
-      default:        return 120;
-    }
-  }
-
-  /// Derives the asset path to store on a newly placed RoomItem.
-  /// Inventory entries may be bare names ("bed") or full filenames ("bed.jpeg").
-  String _assetPathFor(String itemName) {
-    if (itemName.contains('.')) return 'room_assets/$itemName';
-    return 'room_assets/$itemName.png'; // will be resolved at display time
+  void _applyStyle() {
+    ref.read(characterProvider.notifier).applyBestStyle();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Look style applique.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    final character = ref.watch(characterProvider);
+    final isWide = MediaQuery.sizeOf(context).width >= 760;
 
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          // LEFT: vertical inventory panel
-          Container(
-            width: 90,
-            color: Colors.pink[50],
-            child: Column(
-              children: [
-                const SizedBox(height: 40),
-                const Text(
-                  'Items',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.pink,
-                  ),
+          Positioned.fill(
+            child: Image.asset(
+              'room_assets/room_bg.jpeg',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.08),
+                    Colors.pink.withOpacity(0.14),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: inventory.length,
-                    itemBuilder: (context, index) {
-                      final itemName = inventory[index];
-                      return Draggable<String>(
-                        data: itemName,
-                        feedback: _AnyExtensionImage(
-                          itemName: itemName,
-                          width: 80,
-                        ),
-                        childWhenDragging: Opacity(
-                          opacity: 0.3,
-                          child: _AnyExtensionImage(
-                            itemName: itemName,
-                            width: 70,
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final navHeight = isWide ? 76.0 : 70.0;
+                  final headerHeight = isWide ? 64.0 : 58.0;
+                  final previewHeight =
+                      (constraints.maxHeight - navHeight - headerHeight - 26)
+                          .clamp(250.0, isWide ? 455.0 : 360.0)
+                          .toDouble();
+                  final previewWidth = (previewHeight * 0.72)
+                      .clamp(185.0, isWide ? 320.0 : 255.0)
+                      .toDouble();
+
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Ma chambre',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    color: const Color(0xFF4F355B),
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                            ),
                           ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Column(
+                          _RoundIconButton(
+                            icon: Icons.person_rounded,
+                            label: 'Personnage',
+                            onTap: () {
+                              Navigator.of(context)
+                                  .pushReplacementNamed('/character');
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Expanded(
+                        child: Center(
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.center,
                             children: [
-                              _AnyExtensionImage(
-                                itemName: itemName,
-                                width: 70,
+                              CharacterPreview(
+                                character: character,
+                                width: previewWidth,
+                                height: previewHeight,
+                                repaintKey: _characterCaptureKey,
                               ),
-                              Text(
-                                itemName,
-                                style: const TextStyle(fontSize: 9),
-                                textAlign: TextAlign.center,
+                              Positioned(
+                                right: -8,
+                                top: previewHeight * 0.28,
+                                child: _FloatingActionPill(
+                                  icon: Icons.auto_awesome_rounded,
+                                  label: 'Style',
+                                  onTap: _applyStyle,
+                                ),
+                              ),
+                              Positioned(
+                                left: -8,
+                                top: previewHeight * 0.42,
+                                child: _FloatingActionPill(
+                                  icon: Icons.photo_camera_rounded,
+                                  label: 'Photo',
+                                  onTap: _captureCharacter,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // RIGHT: room canvas
-          Expanded(
-            child: DragTarget<String>(
-              onAcceptWithDetails: (details) {
-                final box = context.findRenderObject() as RenderBox;
-                final localOffset = box.globalToLocal(details.offset);
-                setState(() {
-                  _selectedItem = null;
-                  placedItems.add(RoomItem(
-                    name: details.data,
-                    asset: _assetPathFor(details.data),
-                    x: localOffset.dx - 90,
-                    y: localOffset.dy,
-                    width: _getItemWidth(details.data),
-                  ));
-                });
-              },
-              builder: (context, candidate, rejected) {
-                return Stack(
-                  children: [
-                    // Background — tap to deselect
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedItem = null;
-                        });
-                      },
-                      child: Image.asset(
-                        'room_assets/room_bg.jpeg', // already has extension ✓
-                        fit: BoxFit.fill,
-                        width: double.infinity,
-                        height: double.infinity,
                       ),
-                    ),
-
-                    // Save button
-                    Positioned(
-                      top: 40,
-                      right: 16,
-                      child: ElevatedButton.icon(
-                        onPressed: _saveRoom,
-                        icon: const Icon(Icons.save),
-                        label: const Text('Save'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.pink[200],
-                        ),
-                      ),
-                    ),
-
-                    // Placed items
-                    ...placedItems.map((item) {
-                      final isSelected = _selectedItem == item;
-                      return Positioned(
-                        left: item.x,
-                        top: item.y,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () {
-                                setState(() {
-                                  _selectedItem = isSelected ? null : item;
-                                });
-                              },
-                              onScaleStart: (_) {
-                                _baseWidth = item.width;
-                              },
-                              onScaleUpdate: (details) {
-                                setState(() {
-                                  item.x += details.focalPointDelta.dx;
-                                  item.y += details.focalPointDelta.dy;
-                                  if (details.pointerCount >= 2) {
-                                    item.width = (_baseWidth * details.scale)
-                                        .clamp(40, 400);
-                                  }
-                                });
-                              },
-                              child: Container(
-                                decoration: isSelected
-                                    ? BoxDecoration(
-                                        border: Border.all(
-                                          color: Colors.pink,
-                                          width: 2,
-                                        ),
-                                        borderRadius:
-                                            BorderRadius.circular(8),
-                                      )
-                                    : null,
-                                // Use the stored asset path directly —
-                                // it already includes the correct extension.
-                                child: Image.asset(
-                                  item.asset,
-                                  width: item.width,
-                                  errorBuilder: (_, __, ___) =>
-                                      _AnyExtensionImage(
-                                    itemName: item.name,
-                                    width: item.width,
-                                  ),
-                                ),
-                              ),
+                      const SizedBox(height: 10),
+                      _NavigationBar(
+                        height: navHeight,
+                        onDress: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const DressingScreen(),
                             ),
-
-                            // ❌ delete button
-                            if (isSelected)
-                              Positioned(
-                                top: -14,
-                                right: -14,
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () {
-                                    setState(() {
-                                      placedItems.remove(item);
-                                      _selectedItem = null;
-                                    });
-                                  },
-                                  child: Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
-                );
-              },
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NavigationBar extends StatelessWidget {
+  final double height;
+  final VoidCallback onDress;
+
+  const _NavigationBar({
+    required this.height,
+    required this.onDress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.86),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [
+            BoxShadow(
+              blurRadius: 24,
+              color: Color(0x26000000),
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Center(
+          child: _NavButton(
+            icon: Icons.checkroom_rounded,
+            label: 'Habiller',
+            onTap: onDress,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingActionPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _FloatingActionPill({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFFFF7FA),
+      elevation: 8,
+      shadowColor: const Color(0x22000000),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: const Color(0xFFE95D8C), size: 20),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF4F355B),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CaptureDialog extends StatelessWidget {
+  final Uint8List bytes;
+
+  const _CaptureDialog({required this.bytes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.all(22),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Photo du personnage',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                  tooltip: 'Fermer',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 420),
+              child: Image.memory(bytes, fit: BoxFit.contain),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _NavButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: const Color(0xFFE95D8C)),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF4F355B),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundIconButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _RoundIconButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: label,
+      child: IconButton.filledTonal(
+        onPressed: onTap,
+        icon: Icon(icon),
       ),
     );
   }

@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -119,6 +118,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   print(
                                     "Compte créé ! ID du joueur à donner à l'équipe :${userCredential.user!.uid}",
                                   );
+                                  if (mounted) {
+                                    Navigator.of(
+                                      context,
+                                    ).pushReplacementNamed('/character');
+                                  }
                                 } on FirebaseAuthException catch (e) {
                                   print(
                                     'Erreur Firebase : ${e.message} + ${_emailController.text}',
@@ -156,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           // Petit Bouton Login
                           TextButton(
                             onPressed: () {
-                              context.go('/login');
+                              Navigator.of(context).pushReplacementNamed('/login');
                             },
                             // onPressed: () => Navigator.pop(context),
                             style: TextButton.styleFrom(
