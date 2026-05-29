@@ -950,35 +950,10 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
                               child: Container(
                                 width: double.infinity,
                                 color: Colors.white,
-                                child: isBot
-                                    ? Image.asset(
-                                        outfitData?['imageUrl'] ??
-                                            'assets/bots/poupee_chic.png',
-                                        fit: BoxFit.contain,
-                                      )
-                                    : Center(
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(
-                                              Icons.checkroom,
-                                              size: 40,
-                                              color: Color(0xFFDCA1A7),
-                                            ),
-                                            const SizedBox(height: 5),
-                                            Text(
-                                              "Look Humain\n(${outfitData?['hair'] ?? 'Standard'})",
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                child: _OutfitImage(
+                                  imageUrl: outfitData?['imageUrl'] as String?,
+                                  isBot: isBot,
+                                ),
                               ),
                             ),
                             Container(
@@ -1022,6 +997,61 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _OutfitImage extends StatelessWidget {
+  final String? imageUrl;
+  final bool isBot;
+
+  const _OutfitImage({required this.imageUrl, required this.isBot});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl ?? '';
+    if (url.isNotEmpty && url.startsWith('http')) {
+      return Image.network(
+        url,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const _OutfitFallback(),
+      );
+    }
+
+    if (isBot) {
+      return Image.asset(
+        url.isEmpty ? 'assets/bots/poupee_chic.png' : url,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const _OutfitFallback(),
+      );
+    }
+
+    return const _OutfitFallback();
+  }
+}
+
+class _OutfitFallback extends StatelessWidget {
+  const _OutfitFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.checkroom, size: 40, color: Color(0xFFDCA1A7)),
+          SizedBox(height: 5),
+          Text(
+            'Look sauvegarde',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

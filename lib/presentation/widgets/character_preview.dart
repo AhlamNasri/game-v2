@@ -196,9 +196,9 @@ class _CharacterLayerSpec {
     if (assetPath.contains('bottom_blue_jeans')) {
       return const _CharacterLayerSpec(
         centerX: 0.5,
-        widthFactor: 0.46,
-        heightFactor: 0.46,
-        topFactor: 0.46,
+        widthFactor: 0.52,
+        heightFactor: 0.40,
+        topFactor: 0.50,
       );
     }
 
@@ -223,9 +223,9 @@ class _CharacterLayerSpec {
     if (assetPath.contains('top_pink_hoodie')) {
       return const _CharacterLayerSpec(
         centerX: 0.5,
-        widthFactor: 0.58,
-        heightFactor: 0.34,
-        topFactor: 0.29,
+        widthFactor: 0.66,
+        heightFactor: 0.38,
+        topFactor: 0.30,
       );
     }
 
