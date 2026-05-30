@@ -15,13 +15,16 @@ class CharacterSelectionScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final character = ref.watch(characterProvider);
     final controller = ref.read(characterProvider.notifier);
-    final isWide = MediaQuery.sizeOf(context).width >= 760;
+    final screenSize = MediaQuery.sizeOf(context);
+    final isWide = screenSize.width >= 760;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFEEF7),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final bottomSpace = isWide ? 88.0 : 0.0;
+          final useTwoColumns = isWide && constraints.maxWidth >= 700;
+          final isCompactHeight = constraints.maxHeight < 560;
 
           return Container(
             decoration: const BoxDecoration(
@@ -50,23 +53,30 @@ class CharacterSelectionScreen extends ConsumerWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.all(20),
-                    child: isWide
+                    child: useTwoColumns
                         ? Row(
                             children: [
                               Expanded(
                                 flex: 9,
-                                child: _PreviewPanel(
-                                  character: character,
-                                  maxHeight:
-                                      constraints.maxHeight - bottomSpace,
+                                child: SingleChildScrollView(
+                                  child: _PreviewPanel(
+                                    character: character,
+                                    maxHeight: constraints.maxHeight -
+                                        bottomSpace -
+                                        (isCompactHeight ? 36.0 : 0.0),
+                                    compact: isCompactHeight,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 28),
                               Expanded(
                                 flex: 10,
-                                child: _OptionsPanel(
-                                  character: character,
-                                  controller: controller,
+                                child: SingleChildScrollView(
+                                  child: _OptionsPanel(
+                                    character: character,
+                                    controller: controller,
+                                    compact: isCompactHeight,
+                                  ),
                                 ),
                               ),
                             ],
@@ -76,11 +86,13 @@ class CharacterSelectionScreen extends ConsumerWidget {
                               _PreviewPanel(
                                 character: character,
                                 maxHeight: 500,
+                                compact: isCompactHeight,
                               ),
                               const SizedBox(height: 20),
                               _OptionsPanel(
                                 character: character,
                                 controller: controller,
+                                compact: isCompactHeight,
                               ),
                             ],
                           ),
@@ -118,16 +130,22 @@ class CharacterSelectionScreen extends ConsumerWidget {
 class _PreviewPanel extends StatelessWidget {
   final CharacterCustomization character;
   final double maxHeight;
+  final bool compact;
 
   const _PreviewPanel({
     required this.character,
     required this.maxHeight,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final panelHeight = (maxHeight - 84).clamp(340.0, 520.0).toDouble();
-    final previewWidth = (panelHeight * 0.78).clamp(245.0, 360.0).toDouble();
+    final panelHeight = (maxHeight - (compact ? 58 : 84))
+        .clamp(compact ? 260.0 : 340.0, compact ? 390.0 : 520.0)
+        .toDouble();
+    final previewWidth = (panelHeight * 0.78)
+        .clamp(compact ? 195.0 : 245.0, compact ? 300.0 : 360.0)
+        .toDouble();
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -161,7 +179,12 @@ class _PreviewPanel extends StatelessWidget {
         AnimatedContainer(
           duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+          padding: EdgeInsets.fromLTRB(
+            compact ? 14 : 20,
+            compact ? 12 : 18,
+            compact ? 14 : 20,
+            compact ? 14 : 22,
+          ),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -187,7 +210,7 @@ class _PreviewPanel extends StatelessWidget {
               CharacterPreview(
                 character: character,
                 width: previewWidth,
-                height: panelHeight - 48,
+                height: panelHeight - (compact ? 34 : 48),
               ),
               const SizedBox(height: 8),
               Container(
@@ -209,10 +232,12 @@ class _PreviewPanel extends StatelessWidget {
 class _OptionsPanel extends StatelessWidget {
   final CharacterCustomization character;
   final CharacterController controller;
+  final bool compact;
 
   const _OptionsPanel({
     required this.character,
     required this.controller,
+    this.compact = false,
   });
 
   @override
@@ -225,17 +250,17 @@ class _OptionsPanel extends StatelessWidget {
     final faceOptions = FashionCatalog.faceOptionsFor(genderName);
 
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: EdgeInsets.all(compact ? 16 : 22),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.64),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: Colors.white.withOpacity(0.78)),
       ),
-      child: ListView(
-        shrinkWrap: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const SectionTitle('Genre'),
-          const SizedBox(height: 10),
+          SizedBox(height: compact ? 8 : 10),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -254,29 +279,32 @@ class _OptionsPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 22),
+          SizedBox(height: compact ? 14 : 22),
           const SectionTitle('Couleur de peau'),
           _AssetChoices(
             options: FashionCatalog.skinTones,
             selectedValue: character.skinTone,
             onSelected: (option) => controller.updateSkinTone(option.value),
+            compact: compact,
           ),
           if (hairOptions.isNotEmpty) ...[
-            const SizedBox(height: 18),
+            SizedBox(height: compact ? 12 : 18),
             const SectionTitle('Cheveux'),
             _AssetChoices(
               options: hairOptions,
               selectedValue: character.hairStyle,
               onSelected: (option) => controller.updateHair(option.value),
+              compact: compact,
             ),
           ],
           if (faceOptions.isNotEmpty) ...[
-            const SizedBox(height: 18),
+            SizedBox(height: compact ? 12 : 18),
             const SectionTitle('Visage'),
             _AssetChoices(
               options: faceOptions,
               selectedValue: character.faceAsset,
               onSelected: (option) => controller.updateFace(option.value),
+              compact: compact,
             ),
           ],
         ],
@@ -324,17 +352,19 @@ class _AssetChoices extends StatelessWidget {
   final List<CharacterOption> options;
   final String selectedValue;
   final ValueChanged<CharacterOption> onSelected;
+  final bool compact;
 
   const _AssetChoices({
     required this.options,
     required this.selectedValue,
     required this.onSelected,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 116,
+      height: compact ? 98 : 116,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: options.length,
@@ -348,8 +378,8 @@ class _AssetChoices extends StatelessWidget {
             onTap: () => onSelected(option),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              width: 100,
-              padding: const EdgeInsets.all(8),
+              width: compact ? 88 : 100,
+              padding: EdgeInsets.all(compact ? 6 : 8),
               decoration: BoxDecoration(
                 color: selected ? const Color(0xFFFFEDF5) : Colors.white,
                 borderRadius: BorderRadius.circular(18),
