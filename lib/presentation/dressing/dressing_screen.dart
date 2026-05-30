@@ -25,6 +25,8 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
   ClothingCategory selectedCategory = ClothingCategory.pants;
   bool _isSavingPhoto = false;
 
+  static const _headerHeight = 70.0;
+
   static const _categoryOrder = [
     ClothingCategory.hair,
     ClothingCategory.shirts,
@@ -51,9 +53,7 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
           ? selectedCategory
           : categories.first;
     }
-    final bottomHeight = isWide
-        ? screenSize.height.clamp(270.0, 320.0).toDouble()
-        : screenSize.height.clamp(320.0, 410.0).toDouble();
+    final isLandscape = isWide && screenSize.height <= 560;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFD9E8),
@@ -61,61 +61,113 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
         bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final stageHeight = constraints.maxHeight - bottomHeight - 78;
-            final previewHeight = stageHeight.clamp(330.0, 590.0).toDouble();
+            final headerHeight = isLandscape ? 58.0 : _headerHeight;
+            final desiredBottomHeight = isWide
+                ? constraints.maxHeight.clamp(250.0, 300.0).toDouble()
+                : constraints.maxHeight.clamp(300.0, 390.0).toDouble();
+            final maxBottomHeight = constraints.maxHeight - headerHeight - 230;
+            final bottomHeight = desiredBottomHeight
+                .clamp(250.0, maxBottomHeight < 250 ? 250.0 : maxBottomHeight)
+                .toDouble();
+            final stageHeight = isLandscape
+                ? constraints.maxHeight - headerHeight - 28
+                : constraints.maxHeight - bottomHeight - headerHeight;
+            final previewHeight = stageHeight.clamp(230.0, 560.0).toDouble();
             final previewWidth = (previewHeight * 0.72)
-                .clamp(isWide ? 250.0 : 210.0, isWide ? 390.0 : 290.0)
+                .clamp(isWide ? 210.0 : 190.0, isWide ? 390.0 : 290.0)
+                .toDouble();
+            final sidePanelWidth = constraints.maxWidth
+                .clamp(360.0, 430.0)
                 .toDouble();
 
             return Column(
               children: [
                 _DressingHeader(
+                  height: headerHeight,
                   onBack: _openCharacterSelection,
+                  onMenu: _openMenu,
                   onReset: _resetLook,
                 ),
                 Expanded(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Color(0xFFFFF0F8),
-                                Color(0xFFF4D9FF),
-                                Color(0xFFFFC9DE),
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFFFFF0F8),
+                          Color(0xFFF4D9FF),
+                          Color(0xFFFFC9DE),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: isLandscape
+                        ? Padding(
+                            padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Center(
+                                    child: CharacterPreview(
+                                      character: character,
+                                      width: previewWidth,
+                                      height: (constraints.maxHeight -
+                                          headerHeight -
+                                          28)
+                                          .clamp(220.0, 450.0)
+                                          .toDouble(),
+                                      repaintKey: _characterCaptureKey,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                SizedBox(
+                                  width: sidePanelWidth,
+                                  child: _DressingPanel(
+                                    height: double.infinity,
+                                    isSidePanel: true,
+                                    categories: categories,
+                                    selectedCategory: activeCategory,
+                                    onPhoto: _captureCharacter,
+                                    isSavingPhoto: _isSavingPhoto,
+                                    onCategorySelected: (category) {
+                                      setState(
+                                        () => selectedCategory = category,
+                                      );
+                                    },
+                                  ),
+                                ),
                               ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
                             ),
+                          )
+                        : Stack(
+                            children: [
+                              Positioned.fill(
+                                bottom: bottomHeight + 18,
+                                child: Center(
+                                  child: CharacterPreview(
+                                    character: character,
+                                    width: previewWidth,
+                                    height: previewHeight,
+                                    repaintKey: _characterCaptureKey,
+                                  ),
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.bottomCenter,
+                                child: _DressingPanel(
+                                  height: bottomHeight,
+                                  categories: categories,
+                                  selectedCategory: activeCategory,
+                                  onPhoto: _captureCharacter,
+                                  isSavingPhoto: _isSavingPhoto,
+                                  onCategorySelected: (category) {
+                                    setState(() => selectedCategory = category);
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
-                      Positioned.fill(
-                        bottom: bottomHeight + 18,
-                        child: Center(
-                          child: CharacterPreview(
-                            character: character,
-                            width: previewWidth,
-                            height: previewHeight,
-                            repaintKey: _characterCaptureKey,
-                          ),
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: _DressingPanel(
-                          height: bottomHeight,
-                          categories: categories,
-                          selectedCategory: activeCategory,
-                          onPhoto: _captureCharacter,
-                          isSavingPhoto: _isSavingPhoto,
-                          onCategorySelected: (category) {
-                            setState(() => selectedCategory = category);
-                          },
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ],
@@ -140,6 +192,10 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
     context.go('/character');
   }
 
+  void _openMenu() {
+    context.go('/menu');
+  }
+
   Future<void> _captureCharacter() async {
     if (_isSavingPhoto) {
       return;
@@ -152,13 +208,30 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
     }
 
     setState(() => _isSavingPhoto = true);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Capture en cours... sauvegarde de la photo.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
 
     try {
       final character = ref.read(characterProvider);
-      final image = await boundary.toImage(pixelRatio: 3);
+      final image = await boundary.toImage(pixelRatio: 2);
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
       final bytes = data?.buffer.asUint8List();
       if (!mounted || bytes == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('La capture est vide. Essaie encore une fois.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
         return;
       }
 
@@ -170,8 +243,8 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Photo sauvegardee dans ton compte.'),
-          duration: Duration(seconds: 2),
+          content: Text('Capture sauvegardee avec succes.'),
+          duration: Duration(seconds: 3),
         ),
       );
 
@@ -199,16 +272,23 @@ class _DressingScreenState extends ConsumerState<DressingScreen> {
 }
 
 class _DressingHeader extends StatelessWidget {
+  final double height;
   final VoidCallback onBack;
+  final VoidCallback onMenu;
   final VoidCallback onReset;
 
-  const _DressingHeader({required this.onBack, required this.onReset});
+  const _DressingHeader({
+    required this.height,
+    required this.onBack,
+    required this.onMenu,
+    required this.onReset,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 78,
-      padding: const EdgeInsets.symmetric(horizontal: 26),
+      height: height,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFFE777AE), Color(0xFFD285C8)],
@@ -220,6 +300,11 @@ class _DressingHeader extends StatelessWidget {
             tooltip: 'Retour',
             onPressed: onBack,
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          ),
+          IconButton(
+            tooltip: 'Menu',
+            onPressed: onMenu,
+            icon: const Icon(Icons.home_rounded, color: Colors.white),
           ),
           const SizedBox(width: 8),
           const Icon(Icons.checkroom_rounded, color: Colors.white, size: 31),
@@ -239,7 +324,7 @@ class _DressingHeader extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: Colors.white.withOpacity(0.22),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               shape: const StadiumBorder(),
             ),
             icon: const Icon(Icons.refresh_rounded),
@@ -272,7 +357,7 @@ class _CaptureDialog extends StatelessWidget {
               children: [
                 const Expanded(
                   child: Text(
-                    'Photo du personnage',
+                    'Capture sauvegardee',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                   ),
                 ),
@@ -297,6 +382,7 @@ class _CaptureDialog extends StatelessWidget {
 
 class _DressingPanel extends ConsumerWidget {
   final double height;
+  final bool isSidePanel;
   final List<ClothingCategory> categories;
   final ClothingCategory selectedCategory;
   final VoidCallback onPhoto;
@@ -305,6 +391,7 @@ class _DressingPanel extends ConsumerWidget {
 
   const _DressingPanel({
     required this.height,
+    this.isSidePanel = false,
     required this.categories,
     required this.selectedCategory,
     required this.onPhoto,
@@ -318,111 +405,128 @@ class _DressingPanel extends ConsumerWidget {
     final clothes = FashionCatalog.byCategory(
       selectedCategory,
       character.gender.name,
+      character.skinTone,
     );
 
-    return Container(
-      height: height,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(34)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 28,
-            offset: Offset(0, -10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 60,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFA7C1),
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 66,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 18),
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return _CategoryChip(
-                  category: category,
-                  selected: category == selectedCategory,
-                  onTap: () => onCategorySelected(category),
-                );
-              },
-            ),
-          ),
-          const Divider(height: 1, color: Color(0xFFFFD6E4)),
-          SizedBox(
-            height: 132,
-            child: clothes.isEmpty
-                ? const Center(child: Text('Aucun item disponible.'))
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: clothes.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 14),
-                    itemBuilder: (context, index) {
-                      final item = clothes[index];
-                      final selected = selectedCategory == ClothingCategory.hair
-                          ? _sameHairStyle(character.hairAsset, item.assetPath)
-                          : character.outfit[selectedCategory]?.id == item.id;
-                      return _ClothingTile(
-                        item: item,
-                        selected: selected,
-                        onTap: () {
-                          ref.read(characterProvider.notifier).wear(item);
-                        },
-                      );
-                    },
-                  ),
-          ),
-          const Divider(height: 1, color: Color(0xFFFFD6E4)),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(26, 10, 26, 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _ActionButton(
-                      icon: Icons.photo_camera_rounded,
-                      title: 'Photo',
-                      subtitle: isSavingPhoto
-                          ? 'Sauvegarde en cours'
-                          : 'Enregistrer pour la competition',
-                      color: const Color(0xFFE91E8F),
-                      onTap: isSavingPhoto ? null : onPhoto,
-                      isLoading: isSavingPhoto,
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: _ActionButton(
-                      icon: Icons.auto_awesome_rounded,
-                      title: 'Style',
-                      subtitle: 'Appliquer une tenue',
-                      color: const Color(0xFF7E38EA),
-                      onTap: () {
-                        ref.read(characterProvider.notifier).applyBestStyle();
-                      },
-                    ),
-                  ),
-                ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight =
+            height.isFinite ? height : constraints.maxHeight;
+        final compact =
+            availableHeight < 330 || (isSidePanel && availableHeight < 380);
+        final categoryHeight = compact ? 48.0 : (isSidePanel ? 56.0 : 66.0);
+        final itemsHeight = compact ? 104.0 : (isSidePanel ? 118.0 : 132.0);
+        final panelContent = Column(
+          mainAxisSize: isSidePanel ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            SizedBox(height: compact ? 8 : 12),
+            Container(
+              width: 60,
+              height: 5,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFA7C1),
+                borderRadius: BorderRadius.circular(999),
               ),
             ),
+            SizedBox(height: compact ? 4 : (isSidePanel ? 6 : 8)),
+            SizedBox(
+              height: categoryHeight,
+              child: ListView.separated(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 12 : (isSidePanel ? 16 : 22),
+                ),
+                scrollDirection: Axis.horizontal,
+                itemCount: categories.length,
+                separatorBuilder: (_, __) =>
+                    SizedBox(width: compact ? 8 : (isSidePanel ? 10 : 18)),
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  return _CategoryChip(
+                    category: category,
+                    selected: category == selectedCategory,
+                    compact: compact,
+                    onTap: () => onCategorySelected(category),
+                  );
+                },
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFFFD6E4)),
+            SizedBox(
+              height: itemsHeight,
+              child: clothes.isEmpty
+                  ? const Center(child: Text('Aucun item disponible.'))
+                  : ListView.separated(
+                      padding: EdgeInsets.fromLTRB(
+                        compact ? 12 : (isSidePanel ? 16 : 22),
+                        compact ? 8 : 10,
+                        compact ? 12 : (isSidePanel ? 16 : 22),
+                        compact ? 8 : 10,
+                      ),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: clothes.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 14),
+                      itemBuilder: (context, index) {
+                        final item = clothes[index];
+                        final selected =
+                            selectedCategory == ClothingCategory.hair
+                                ? _sameHairStyle(
+                                    character.hairAsset,
+                                    item.assetPath,
+                                  )
+                                : character.outfit[selectedCategory]?.id ==
+                                    item.id;
+                        return _ClothingTile(
+                          item: item,
+                          selected: selected,
+                          onTap: () {
+                            ref.read(characterProvider.notifier).wear(item);
+                          },
+                        );
+                      },
+                    ),
+            ),
+            const Divider(height: 1, color: Color(0xFFFFD6E4)),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                compact ? 12 : (isSidePanel ? 16 : 26),
+                compact ? 8 : 10,
+                compact ? 12 : (isSidePanel ? 16 : 26),
+                compact ? 10 : 14,
+              ),
+              child: _DressingActions(
+                compact: compact,
+                stacked: isSidePanel && !compact,
+                isSavingPhoto: isSavingPhoto,
+                onPhoto: onPhoto,
+                onStyle: () {
+                  ref.read(characterProvider.notifier).applyBestStyle();
+                },
+              ),
+            ),
+          ],
+        );
+
+        return Container(
+          height: height.isFinite ? height : null,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(
+              top: const Radius.circular(26),
+              bottom: isSidePanel ? const Radius.circular(26) : Radius.zero,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 28,
+                offset: Offset(0, -10),
+              ),
+            ],
           ),
-        ],
-      ),
+          child: isSidePanel
+              ? SingleChildScrollView(child: panelContent)
+              : panelContent,
+        );
+      },
     );
   }
 
@@ -445,11 +549,13 @@ class _DressingPanel extends ConsumerWidget {
 class _CategoryChip extends StatelessWidget {
   final ClothingCategory category;
   final bool selected;
+  final bool compact;
   final VoidCallback onTap;
 
   const _CategoryChip({
     required this.category,
     required this.selected,
+    this.compact = false,
     required this.onTap,
   });
 
@@ -462,7 +568,10 @@ class _CategoryChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 12 : 16,
+            vertical: compact ? 8 : 10,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -471,7 +580,7 @@ class _CategoryChip extends StatelessWidget {
                 color: selected
                     ? const Color(0xFFD9166B)
                     : const Color(0xFFB7B3B6),
-                size: 23,
+                size: compact ? 20 : 23,
               ),
               const SizedBox(width: 8),
               Text(
@@ -481,7 +590,7 @@ class _CategoryChip extends StatelessWidget {
                       ? const Color(0xFFD9166B)
                       : const Color(0xFFB7B3B6),
                   fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-                  fontSize: 15,
+                  fontSize: compact ? 13 : 15,
                 ),
               ),
             ],
@@ -557,6 +666,65 @@ class _ClothingTile extends StatelessWidget {
   }
 }
 
+class _DressingActions extends StatelessWidget {
+  final bool compact;
+  final bool stacked;
+  final bool isSavingPhoto;
+  final VoidCallback onPhoto;
+  final VoidCallback onStyle;
+
+  const _DressingActions({
+    required this.compact,
+    required this.stacked,
+    required this.isSavingPhoto,
+    required this.onPhoto,
+    required this.onStyle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final photoButton = _ActionButton(
+      icon: Icons.photo_camera_rounded,
+      title: 'Photo',
+      subtitle: isSavingPhoto
+          ? 'Sauvegarde en cours'
+          : compact
+              ? 'Enregistrer'
+              : 'Enregistrer pour la competition',
+      color: const Color(0xFFE91E8F),
+      onTap: isSavingPhoto ? null : onPhoto,
+      isLoading: isSavingPhoto,
+      compact: compact,
+    );
+    final styleButton = _ActionButton(
+      icon: Icons.auto_awesome_rounded,
+      title: 'Style',
+      subtitle: compact ? 'Tenue' : 'Appliquer une tenue',
+      color: const Color(0xFF7E38EA),
+      onTap: onStyle,
+      compact: compact,
+    );
+
+    if (stacked) {
+      return Column(
+        children: [
+          photoButton,
+          const SizedBox(height: 12),
+          styleButton,
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: photoButton),
+        SizedBox(width: compact ? 10 : 18),
+        Expanded(child: styleButton),
+      ],
+    );
+  }
+}
+
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -564,6 +732,7 @@ class _ActionButton extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
   final bool isLoading;
+  final bool compact;
 
   const _ActionButton({
     required this.icon,
@@ -572,6 +741,7 @@ class _ActionButton extends StatelessWidget {
     required this.color,
     required this.onTap,
     this.isLoading = false,
+    this.compact = false,
   });
 
   @override
@@ -585,8 +755,11 @@ class _ActionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         onTap: onTap,
         child: Container(
-          height: 66,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          height: compact ? 54 : 66,
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 12 : 18,
+            vertical: compact ? 8 : 10,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -599,8 +772,8 @@ class _ActionButton extends StatelessWidget {
                         strokeWidth: 3,
                       ),
                     )
-                  : Icon(icon, color: Colors.white, size: 29),
-              const SizedBox(width: 14),
+                  : Icon(icon, color: Colors.white, size: compact ? 23 : 29),
+              SizedBox(width: compact ? 9 : 14),
               Flexible(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -610,9 +783,9 @@ class _ActionButton extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: compact ? 15 : 18,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -620,10 +793,10 @@ class _ActionButton extends StatelessWidget {
                       subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        fontSize: compact ? 10 : 12,
                       ),
                     ),
                   ],

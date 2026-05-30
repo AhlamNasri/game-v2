@@ -53,6 +53,30 @@ class FashionCatalog {
       assetPath: 'assets/characters/hair/girl_light_head_hair2.png',
       gender: 'girl',
     ),
+    CharacterOption(
+      label: 'Style 1',
+      value: 'hair1',
+      assetPath: 'assets/characters/hair/girl_tan_head_hair1.png',
+      gender: 'girl',
+    ),
+    CharacterOption(
+      label: 'Style 2',
+      value: 'hair2',
+      assetPath: 'assets/characters/hair/girl_tan_head_hair2.png',
+      gender: 'girl',
+    ),
+    CharacterOption(
+      label: 'Style 1',
+      value: 'hair1',
+      assetPath: 'assets/characters/hair/boy_tan_head_hair1.png',
+      gender: 'boy',
+    ),
+    CharacterOption(
+      label: 'Style 2',
+      value: 'hair2',
+      assetPath: 'assets/characters/hair/boy_tan_head_hair2.png',
+      gender: 'boy',
+    ),
   ];
 
   static const faceOptions = <CharacterOption>[];
@@ -258,15 +282,53 @@ class FashionCatalog {
       assetPath: 'assets/characters/hair/girl_light_head_hair2.png',
       gender: 'girl',
     ),
+    ClothingItem(
+      id: 'girl_tan_hair1',
+      name: 'Style 1',
+      category: ClothingCategory.hair,
+      assetPath: 'assets/characters/hair/girl_tan_head_hair1.png',
+      gender: 'girl',
+    ),
+    ClothingItem(
+      id: 'girl_tan_hair2',
+      name: 'Style 2',
+      category: ClothingCategory.hair,
+      assetPath: 'assets/characters/hair/girl_tan_head_hair2.png',
+      gender: 'girl',
+    ),
+    ClothingItem(
+      id: 'boy_tan_hair1',
+      name: 'Style 1',
+      category: ClothingCategory.hair,
+      assetPath: 'assets/characters/hair/boy_tan_head_hair1.png',
+      gender: 'boy',
+    ),
+    ClothingItem(
+      id: 'boy_tan_hair2',
+      name: 'Style 2',
+      category: ClothingCategory.hair,
+      assetPath: 'assets/characters/hair/boy_tan_head_hair2.png',
+      gender: 'boy',
+    ),
   ];
 
   static ClothingItem byId(String id) {
     return clothingItems.firstWhere((item) => item.id == id);
   }
 
-  static List<CharacterOption> hairOptionsFor(String gender) {
+  static List<CharacterOption> hairOptionsFor(
+    String gender, [
+    String? skinTone,
+  ]) {
     return hairOptions
-        .where((option) => option.gender == 'all' || option.gender == gender)
+        .where((option) {
+          final genderMatches =
+              option.gender == 'all' || option.gender == gender;
+          if (!genderMatches) return false;
+          if (skinTone == null) return true;
+
+          return option.assetPath.contains('${gender}_${skinTone}_head_');
+        })
         .toList();
   }
 
@@ -287,11 +349,20 @@ class FashionCatalog {
   static List<ClothingItem> byCategory(
     ClothingCategory category, [
     String? gender,
+    String? skinTone,
   ]) {
     return clothingItems.where((item) {
       final genderMatches =
           gender == null || item.gender == 'all' || item.gender == gender;
       return item.category == category && genderMatches;
+    }).where((item) {
+      if (category != ClothingCategory.hair ||
+          skinTone == null ||
+          gender == null) {
+        return true;
+      }
+
+      return item.assetPath.contains('${gender}_${skinTone}_head_');
     }).toList();
   }
 }

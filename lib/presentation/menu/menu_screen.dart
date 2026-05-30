@@ -268,8 +268,69 @@ class _MenuLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = constraints.maxWidth;
     final h = constraints.maxHeight;
+    final compact = w < 620 || h < 420;
     final hPad = (w * 0.025).clamp(12.0, 32.0);
     final vPad = (h * 0.030).clamp(8.0, 18.0);
+
+    if (compact) {
+      return SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _BrandHeader(h: h),
+            SizedBox(height: (h * 0.025).clamp(8.0, 16.0)),
+            _ProfileStrip(
+              profile: profile,
+              loading: loading,
+              h: h,
+            ),
+            SizedBox(height: (h * 0.030).clamp(10.0, 18.0)),
+            _NavButton(
+              label: 'Decorate Room',
+              icon: Icons.chair_alt_outlined,
+              accent: const Color(0xFFD16BA5),
+              h: h,
+              onPressed: onDecorateRoom,
+            ),
+            SizedBox(height: (h * 0.022).clamp(6.0, 14.0)),
+            _NavButton(
+              label: 'Competition Mode',
+              icon: Icons.emoji_events_outlined,
+              accent: const Color(0xFFE0A221),
+              h: h,
+              onPressed: onCompetitionMode,
+              badge: 'LIVE',
+            ),
+            SizedBox(height: (h * 0.022).clamp(6.0, 14.0)),
+            _NavButton(
+              label: 'My Closet',
+              icon: Icons.checkroom_outlined,
+              accent: const Color(0xFF7B8BFF),
+              h: h,
+              onPressed: onCloset,
+            ),
+            SizedBox(height: (h * 0.022).clamp(6.0, 14.0)),
+            _NavButton(
+              label: 'Go Shopping',
+              icon: Icons.shopping_bag_outlined,
+              accent: const Color(0xFF7B8BFF),
+              h: h,
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Boutique a venir !')),
+              ),
+            ),
+            SizedBox(height: (h * 0.030).clamp(10.0, 18.0)),
+            _BottomBar(
+              isLoggedIn: isLoggedIn,
+              profile: profile,
+              onAuthAction: onAuthAction,
+              h: h,
+            ),
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
