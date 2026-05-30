@@ -218,7 +218,10 @@ class _OptionsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final genderName = character.gender.name;
-    final hairOptions = FashionCatalog.hairOptionsFor(genderName);
+    final hairOptions = FashionCatalog.hairOptionsFor(
+      genderName,
+      character.skinTone,
+    );
     final faceOptions = FashionCatalog.faceOptionsFor(genderName);
 
     return Container(
