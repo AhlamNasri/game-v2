@@ -13,10 +13,11 @@ class AuthService {
     await userDocument.set({
       'nickname': nickname.trim(),
       'email': email.trim(),
-      'avatarUrl': avatarUrl, // Chaîne vide par défaut pour l'instant
-      'level': 1, // NOMBRE ENTIER : Commence au niveau 1
-      'price': 500, // NOMBRE ENTIER : On lui offre 500 pièces de départ !
-      'boughtItems': [], // LISTE VIDE : Aucun objet acheté au début
+      'avatarUrl': avatarUrl,
+      'level': 1,
+      'xp': 0,
+      'coins': 500,
+      'boughtItems': [],
       'createdAt': DateTime.now(),
     });
   }

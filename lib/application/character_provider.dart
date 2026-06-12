@@ -18,7 +18,7 @@ class CharacterController extends Notifier<CharacterCustomization> {
 
   @override
   CharacterCustomization build() {
-    Future.microtask(loadSavedCharacter);
+    Future.microtask(applyBestStyle);
     return CharacterCustomization.initial();
   }
 
@@ -37,22 +37,13 @@ class CharacterController extends Notifier<CharacterCustomization> {
   }
 
   void updateGender(CharacterGender gender) {
-    if (gender == CharacterGender.boy) {
-      state = state.copyWith(
-        gender: gender,
-        hairAsset: 'hair1',
-        faceAsset: '',
-        outfit: {},
-      );
-      _saveCurrent();
-      return;
-    }
-
     state = state.copyWith(
       gender: gender,
       hairAsset: 'hair1',
       faceAsset: '',
       outfit: {},
+      transforms: {},
+      zOrders: {},
     );
     _saveCurrent();
   }
@@ -73,50 +64,102 @@ class CharacterController extends Notifier<CharacterCustomization> {
   }
 
   void resetOutfit() {
-    state = state.copyWith(outfit: {});
+    state = state.copyWith(outfit: {}, transforms: {}, zOrders: {});
     _saveCurrent();
   }
 
+  // ── Interactive transform controls ─────────────────────────────────────────
+
+  /// Update the position / scale / rotation of one clothing slot.
+  /// Called on every gesture tick — does NOT persist to avoid Firestore spam.
+  void updateTransform(ClothingCategory category, ItemTransform transform) {
+    final transforms =
+        Map<ClothingCategory, ItemTransform>.from(state.transforms);
+    transforms[category] = transform;
+    state = state.copyWith(transforms: transforms);
+  }
+
+  /// Update the hair layer transform (drag / scale / rotate). Not persisted.
+  void updateHairTransform(ItemTransform transform) {
+    state = state.copyWith(hairTransform: transform);
+  }
+
+  /// Reset hair transform back to the spec default.
+  void resetHairTransform() {
+    state = state.copyWith(hairTransform: const ItemTransform());
+  }
+
+  /// Reset a slot's transform back to the LayerSpec default.
+  void resetTransform(ClothingCategory category) {
+    final transforms =
+        Map<ClothingCategory, ItemTransform>.from(state.transforms);
+    transforms.remove(category);
+    state = state.copyWith(transforms: transforms);
+  }
+
+  /// Move a slot one step closer to the viewer (higher z-order).
+  void raiseLayer(ClothingCategory category) {
+    final zOrders = Map<ClothingCategory, int>.from(state.zOrders);
+    zOrders[category] = state.zOrderOf(category) + 1;
+    state = state.copyWith(zOrders: zOrders);
+  }
+
+  /// Move a slot one step further from the viewer (lower z-order).
+  void lowerLayer(ClothingCategory category) {
+    final zOrders = Map<ClothingCategory, int>.from(state.zOrders);
+    final current = state.zOrderOf(category);
+    if (current > 0) zOrders[category] = current - 1;
+    state = state.copyWith(zOrders: zOrders);
+  }
+
+  /// Remove a single item from the outfit and clear its transform.
+  void unequip(ClothingCategory category) {
+    final outfit = Map<ClothingCategory, ClothingItem>.from(state.outfit);
+    final transforms =
+        Map<ClothingCategory, ItemTransform>.from(state.transforms);
+    outfit.remove(category);
+    transforms.remove(category);
+    state = state.copyWith(outfit: outfit, transforms: transforms);
+    _saveCurrent();
+  }
+
+  // ── Slot logic ─────────────────────────────────────────────────────────────
+
+  /// Skirt-type items occupy the dress slot but only cover the legs,
+  /// so they can be paired with a separate top.
+  static const _skirtIds = {'plaid_skirt', 'skirt_long'};
+
   void wear(ClothingItem item) {
-    if (item.gender != 'all' && item.gender != state.gender.name) {
-      return;
-    }
+    if (item.gender != 'all' && item.gender != state.gender.name) return;
 
     if (item.category == ClothingCategory.hair) {
-      updateHair(item.assetPath);
+      // Store the canonical style id ('hair1' or 'hair2'), not the asset path.
+      // headHairAsset resolves the right PNG per gender without skinTone coupling.
+      updateHair(item.id.endsWith('hair2') ? 'hair2' : 'hair1');
       return;
     }
 
     final outfit = Map<ClothingCategory, ClothingItem>.from(state.outfit);
+    final wornDress = outfit[ClothingCategory.dresses];
+    final wornDressIsSkirt =
+        wornDress != null && _skirtIds.contains(wornDress.id);
 
-    final isSkirt = item.id == 'plaid_skirt';
-
-    // Une robe complète (non-jupe) retire le pantalon ET le haut
-    if (item.category == ClothingCategory.dresses && !isSkirt) {
-      outfit.remove(ClothingCategory.pants);
-      outfit.remove(ClothingCategory.shirts);
-    }
-
-    // Une jupe retire seulement le pantalon (garde le haut)
-    if (item.category == ClothingCategory.dresses && isSkirt) {
-      outfit.remove(ClothingCategory.pants);
-    }
-
-    // Un pantalon retire la robe complète (mais garde la jupe)
-    if (item.category == ClothingCategory.pants) {
-      final dress = outfit[ClothingCategory.dresses];
-      // ✅ FIX : on retire la robe seulement si ce n'est pas une jupe
-      if (dress != null && dress.id != 'plaid_skirt') {
+    switch (item.category) {
+      case ClothingCategory.dresses:
+        outfit.remove(ClothingCategory.pants);
+        if (!_skirtIds.contains(item.id)) {
+          outfit.remove(ClothingCategory.shirts);
+        }
+      case ClothingCategory.pants:
         outfit.remove(ClothingCategory.dresses);
-      }
-    }
-
-    // Un haut retire la robe complète (mais garde la jupe)
-    if (item.category == ClothingCategory.shirts) {
-      final dress = outfit[ClothingCategory.dresses];
-      if (dress != null && dress.id != 'plaid_skirt') {
-        outfit.remove(ClothingCategory.dresses);
-      }
+      case ClothingCategory.shirts:
+        if (wornDress != null && !wornDressIsSkirt) {
+          outfit.remove(ClothingCategory.dresses);
+        }
+      case ClothingCategory.shoes:
+      case ClothingCategory.accessories:
+      case ClothingCategory.hair:
+        break;
     }
 
     outfit[item.category] = item;
@@ -124,9 +167,6 @@ class CharacterController extends Notifier<CharacterCustomization> {
     _saveCurrent();
   }
 
-  // ✅ FIX : applyBestStyle utilise maintenant les bons vêtements
-  // Garçon : veste cuir + jean + bottes (comme dans l'image 1)
-  // Fille   : pull oversized + sneakers (comme dans l'image 2)
   void applyBestStyle() {
     if (state.gender == CharacterGender.boy) {
       state = state.copyWith(
@@ -146,7 +186,9 @@ class CharacterController extends Notifier<CharacterCustomization> {
       hairAsset: 'hair1',
       faceAsset: '',
       outfit: {
-        ClothingCategory.dresses: FashionCatalog.byId('outfit_magical_girl'),
+        ClothingCategory.dresses: FashionCatalog.byId('plaid_skirt'),
+        ClothingCategory.shirts: FashionCatalog.byId('top_pink_hoodie'),
+        ClothingCategory.shoes: FashionCatalog.byId('sneakers_white'),
       },
     );
     _saveCurrent();

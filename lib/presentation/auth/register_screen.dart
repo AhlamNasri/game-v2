@@ -27,7 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     UserService userService = UserService();
 
     if (email.isEmpty || password.isEmpty) {
-      _showSnackBar("Oups ! Remplis tous les champs ✨");
+      _showSnackBar("Please fill in all fields");
       return;
     }
 
@@ -41,9 +41,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       String finalUid = "";
 
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      String currentNickname = prefs.getString('user_nickname') ?? "Joueur";
+      String currentNickname = prefs.getString('user_nickname') ?? "Player";
       String currentAvatarId =
-          prefs.getString('user_avatarId') ?? "default_avatar";
+          prefs.getString('user_avatarId') ?? "avatar1";
 
       if (currentUser != null && currentUser.isAnonymous) {
         UserCredential userCredential = await currentUser.linkWithCredential(
@@ -58,8 +58,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             .doc(finalUid)
             .update({'email': email});
 
-        print(
-          "🎉 Compte anonyme fusionné ! UID conservé : $finalUid et Nickname conservé : $currentNickname",
+        debugPrint(
+          "Anonymous account merged. UID kept: $finalUid, nickname: $currentNickname",
         );
       } else {
         UserCredential userCredential = await _auth
@@ -75,7 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'avatarId': currentAvatarId,
         });
 
-        print("Compte créé normalement ! ID du joueur : $finalUid");
+        debugPrint("Account created. Player ID: $finalUid");
       }
 
       await userService.saveUserLocally(
@@ -85,21 +85,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (mounted) {
-        context.go('/room');
+        context.go('/menu');
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
-        _showSnackBar('Cet e-mail est déjà utilisé par un autre joueur.');
+        _showSnackBar('This email is already used by another player.');
       } else if (e.code == 'weak-password') {
-        _showSnackBar('Le mot de passe doit contenir au moins 6 caractères.');
+        _showSnackBar('Password must be at least 6 characters.');
       } else if (e.code == 'credential-already-in-use') {
-        _showSnackBar('Cet e-mail est déjà lié à un compte existant.');
+        _showSnackBar('This email is already linked to an account.');
       } else {
-        _showSnackBar('Erreur : ${e.message}');
+        _showSnackBar('Error: ${e.message}');
       }
     } catch (e) {
-      print("Erreur Inscription : $e");
-      _showSnackBar("Une erreur est survenue lors de l'aventure.");
+      debugPrint("Registration error: $e");
+      _showSnackBar('Something went wrong. Please try again.');
     }
   }
 

@@ -43,6 +43,8 @@ dependencies:
   google_sign_in: ^7.2.0
   shared_preferences: ^2.5.5
   audioplayers: ^6.6.0
+  google_fonts: ^6.2.1
+  confetti: ^0.7.0
 
 dev_dependencies:
   flutter_test:
@@ -77,11 +79,6 @@ flutter:
       - assets/
       - assets/background/
       - assets/audio/
-      - assets/clothes/chaussures/
-      - assets/clothes/accessoires/
-      - assets/clothes/robes/
-      - assets/clothes/pantalons/
-      - assets/clothes/tshirts/
       - assets/characters/
       - assets/characters/body/
       - assets/characters/hair/

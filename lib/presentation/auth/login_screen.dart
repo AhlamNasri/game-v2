@@ -38,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
     UserService userService = UserService();
 
     if (email.isEmpty || password.isEmpty) {
-      _showSnackBar("Oups ! Remplis tous les champs ✨");
+      _showSnackBar("Please fill in all fields");
       return;
     }
 
@@ -46,9 +46,9 @@ class _LoginScreenState extends State<LoginScreen> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       User? currentUser = _auth.currentUser;
 
-      String currentNickname = prefs.getString('user_nickname') ?? "Joueur";
+      String currentNickname = prefs.getString('user_nickname') ?? "Player";
       String currentAvatarId =
-          prefs.getString('user_avatarId') ?? "default_avatar";
+          prefs.getString('user_avatarId') ?? "avatar1";
       bool wasAnonymous = currentUser != null && currentUser.isAnonymous;
 
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
@@ -67,29 +67,29 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
 
         Map<String, dynamic> oldData = userDoc.data() as Map<String, dynamic>;
-        String oldNickname = oldData['nickname'] ?? "Joueur";
-        String oldAvatarId = oldData['avatarId'] ?? "default_avatar";
+        String oldNickname = oldData['nickname'] ?? "Player";
+        String oldAvatarId = oldData['avatarId'] ?? "avatar1";
 
         bool? retrieveOldGame = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: const Text("Partie existante trouvée ! ✨"),
+              title: const Text("Existing save found"),
               content: Text(
-                "Tu as déjà joué ! Veux-tu récupérer ton ancienne poupée ($oldNickname) ou écraser ton compte pour rejouer avec ta nouvelle poupée actuelle ?",
+                "You've played before! Want to restore your old doll ($oldNickname), or overwrite your account to play with your current new doll?",
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   child: const Text(
-                    "Rejouer (Écraser)",
+                    "Replay (Overwrite)",
                     style: TextStyle(color: Colors.red),
                   ),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text("Récupérer l'ancienne"),
+                  child: const Text("Restore old doll"),
                 ),
               ],
             );
@@ -127,23 +127,26 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('uid', existingUid);
         if (userDoc.exists) {
           Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-          await prefs.setString('user_nickname', data['nickname'] ?? "Joueur");
+          await prefs.setString('user_nickname', data['nickname'] ?? "Player");
           await prefs.setString(
             'user_avatarId',
-            data['avatarId'] ?? "default_avatar",
+            data['avatarId'] ?? "avatar1",
           );
         }
       }
 
       if (mounted) {
-        //context.go('/lobby?roomId=${widget.roomId}');
-        context.go('/room');
+        context.go(
+          widget.roomId.isNotEmpty
+              ? '/lobby?roomId=${widget.roomId}'
+              : '/menu',
+        );
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
-        _showSnackBar('Aucun utilisateur trouvé ou mot de passe incorrect.');
+        _showSnackBar('No user found, or incorrect password.');
       } else if (e.code == 'wrong-password') {
-        _showSnackBar('Le mot de passe est incorrect.');
+        _showSnackBar('Incorrect password.');
       } else {
         _showSnackBar('Erreur : ${e.message}');
       }
@@ -165,7 +168,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (googleSignIn.supportsAuthenticate()) {
         final GoogleSignInAccount googleUser = await googleSignIn
             .authenticate();
-        if (googleUser == null) return;
 
         final GoogleSignInAuthentication googleAuth = googleUser.authentication;
         final String? idToken = googleAuth.idToken;
@@ -176,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
         final String accessToken = authorization.accessToken;
 
         if (idToken == null) {
-          _showSnackBar("Erreur : Impossible de récupérer les jetons Google.");
+          _showSnackBar("Error: couldn't retrieve Google tokens.");
           return;
         }
 
@@ -203,29 +205,29 @@ class _LoginScreenState extends State<LoginScreen> {
           if (!mounted) return;
 
           Map<String, dynamic> oldData = userDoc.data() as Map<String, dynamic>;
-          String oldNickname = oldData['nickname'] ?? "Joueur";
-          String oldAvatarId = oldData['avatarId'] ?? "default_avatar";
+          String oldNickname = oldData['nickname'] ?? "Player";
+          String oldAvatarId = oldData['avatarId'] ?? "avatar1";
 
           bool? retrieveOldGame = await showDialog<bool>(
             context: context,
             barrierDismissible: false,
             builder: (BuildContext context) {
               return AlertDialog(
-                title: const Text("Partie existante trouvée ! ✨"),
+                title: const Text("Existing save found"),
                 content: Text(
-                  "Tu as déjà joué ! Veux-tu récupérer ton ancienne poupée ($oldNickname) ou écraser ton compte pour rejouer avec ta nouvelle poupée actuelle ?",
+                  "You've played before! Want to restore your old doll ($oldNickname), or overwrite your account to play with your current new doll?",
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(false),
                     child: const Text(
-                      "Rejouer (Écraser)",
+                      "Replay (Overwrite)",
                       style: TextStyle(color: Colors.red),
                     ),
                   ),
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text("Récupérer l'ancienne"),
+                    child: const Text("Restore old doll"),
                   ),
                 ],
               );
@@ -243,9 +245,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 .delete();
 
             String currentNickname =
-                prefs.getString('user_nickname') ?? "Joueur";
+                prefs.getString('user_nickname') ?? "Player";
             String currentAvatarId =
-                prefs.getString('user_avatarId') ?? "default_avatar";
+                prefs.getString('user_avatarId') ?? "avatar1";
 
             UserCredential linkedCredential = await currentUser
                 .linkWithCredential(credential);
@@ -275,23 +277,26 @@ class _LoginScreenState extends State<LoginScreen> {
             Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
             await prefs.setString(
               'user_nickname',
-              data['nickname'] ?? "Joueur",
+              data['nickname'] ?? "Player",
             );
             await prefs.setString(
               'user_avatarId',
-              data['avatarId'] ?? "default_avatar",
+              data['avatarId'] ?? "avatar1",
             );
           }
         }
 
         if (mounted) {
-          //context.go('/lobby?roomId=${widget.roomId}');
-          context.go('/room');
+          context.go(
+            widget.roomId.isNotEmpty
+                ? '/lobby?roomId=${widget.roomId}'
+                : '/menu',
+          );
         }
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'credential-already-in-use') {
-        _showSnackBar('Ce compte Google appartient déjà à un autre joueur.');
+        _showSnackBar('This Google account already belongs to another player.');
       } else {
         _showSnackBar('Erreur Firebase : ${e.message}');
       }
@@ -344,10 +349,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(25.0),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.35),
+                          color: Colors.white.withValues(alpha: 0.35),
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.4),
+                            color: Colors.white.withValues(alpha: 0.4),
                             width: 1.5,
                           ),
                         ),
@@ -427,7 +432,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                             MainAxisAlignment.center,
                                         children: [
                                           const Text(
-                                            "Pas de profil ? ",
+                                            "No profile yet? ",
                                             style: TextStyle(
                                               color: Color(0xFF5D3768),
                                               fontSize: 12,
@@ -458,7 +463,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Container(
                                     height: 140,
                                     width: 1.5,
-                                    color: Colors.white.withOpacity(0.5),
+                                    color: Colors.white.withValues(alpha: 0.5),
                                     margin: const EdgeInsets.symmetric(
                                       horizontal: 20,
                                     ),
@@ -472,9 +477,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       children: [
                                         Expanded(
                                           child: Divider(
-                                            color: Colors.white.withOpacity(
-                                              0.4,
-                                            ),
+                                            color: Colors.white
+                                                .withValues(alpha: 0.4),
                                           ),
                                         ),
                                         const Padding(
@@ -482,7 +486,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                             horizontal: 10,
                                           ),
                                           child: Text(
-                                            "OU",
+                                            "OR",
                                             style: TextStyle(
                                               color: Color(0xFF5D3768),
                                               fontSize: 12,
@@ -491,9 +495,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                         Expanded(
                                           child: Divider(
-                                            color: Colors.white.withOpacity(
-                                              0.4,
-                                            ),
+                                            color: Colors.white
+                                                .withValues(alpha: 0.4),
                                           ),
                                         ),
                                       ],
@@ -555,9 +558,9 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
+        color: Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.8)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.8)),
       ),
       child: TextField(
         controller: controllerInput,
@@ -582,12 +585,12 @@ class _LoginScreenState extends State<LoginScreen> {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.white),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 3),
               ),

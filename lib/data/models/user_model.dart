@@ -27,7 +27,7 @@ class UserModel {
       uid: doc.id,
       nickname: data['nickname'] ?? '',
       email: data['email'] ?? '',
-      avatarId: data['avatarId'] ?? 'default_girl',
+      avatarId: data['avatarId'] ?? 'avatar1',
       level: data['level'] ?? 1,
       xp: data['xp'] ?? 0,
       coins: data['coins'] ?? 100,

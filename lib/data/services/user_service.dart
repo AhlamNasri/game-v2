@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fashion_room_girls/data/models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserService {
@@ -17,7 +18,7 @@ class UserService {
     await prefs.setString('user_uid', uid);
     await prefs.setString('user_nickname', nickname);
     await prefs.setString('user_avatarId', avatarId);
-    print("Données utilisateur sauvegardées localement !");
+    debugPrint("User data saved locally.");
   }
 
   // 🟢 2. Fonction pour récupérer les infos locales (Utile au démarrage du jeu)
@@ -73,10 +74,10 @@ class UserService {
         avatarId: avatarId,
       );
 
-      print("Joueur invité créé et stocké localement !");
+      debugPrint("Guest player created and stored locally.");
       return newPlayer;
     } catch (e) {
-      print("Erreur : $e");
+      debugPrint("Error: $e");
       rethrow;
     }
   }

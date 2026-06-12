@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:fashion_room_girls/data/services/lobbyService.dart';
+import 'package:fashion_room_girls/data/services/lobby_service.dart';
 import 'package:fashion_room_girls/data/services/user_service.dart';
 import 'package:fashion_room_girls/presentation/room_design/data/room_assets.dart';
 import 'package:fashion_room_girls/presentation/room_design/data/room_repository.dart';
@@ -517,7 +517,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
 
       final String myAvatarId = localUser['avatarId']?.isNotEmpty == true
           ? localUser['avatarId']!
-          : 'avatar_1';
+          : 'avatar1';
 
       final int myLevel = _saveState?.playerLevel ?? 1;
 
@@ -535,7 +535,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Impossible de trouver une salle : $error')),
+        SnackBar(content: Text('Could not find a room: $error')),
       );
     }
   }

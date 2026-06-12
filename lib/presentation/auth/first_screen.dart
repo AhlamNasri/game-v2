@@ -16,7 +16,7 @@ class _RegisterScreenState extends State<FirstScreen> {
   // 1. On ajoute un contrôleur pour le scroll
   final ScrollController _scrollController = ScrollController();
 
-  String _selectedAvatarId = 'avatar_doux';
+  String _selectedAvatarId = 'avatar1';
   bool _isLoading = false;
   bool _isKeyboardOpen = false;
 
@@ -25,19 +25,19 @@ class _RegisterScreenState extends State<FirstScreen> {
 
   final List<Map<String, String>> _avatars = [
     {
-      'id': 'avatar_doux',
-      'path': 'assets/avatars/avatar_doux.png',
-      'name': 'Style Doux',
+      'id': 'avatar1',
+      'path': 'assets/avatars/avatar1.png',
+      'name': 'Style 1',
     },
     {
-      'id': 'avatar_chic',
-      'path': 'assets/avatars/avatar_chic.png',
-      'name': 'Style Chic',
+      'id': 'avatar2',
+      'path': 'assets/avatars/avatar2.png',
+      'name': 'Style 2',
     },
     {
-      'id': 'avatar_sport',
-      'path': 'assets/avatars/avatar_sport.png',
-      'name': 'Style Sport',
+      'id': 'avatar3',
+      'path': 'assets/avatars/avatar3.png',
+      'name': 'Style 3',
     },
   ];
 
@@ -66,7 +66,7 @@ class _RegisterScreenState extends State<FirstScreen> {
     if (nickname.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Oups ! Entre un pseudonyme pour ta poupée ✨"),
+          content: const Text("Enter a nickname"),
           backgroundColor: _cozyRoseTheme,
         ),
       );
@@ -84,17 +84,18 @@ class _RegisterScreenState extends State<FirstScreen> {
       );
 
       if (mounted) {
-        context.go('/room');
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("Bienvenue $nickname !")));
+        ).showSnackBar(SnackBar(content: Text("Welcome, $nickname!")));
+        context.go('/character');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur lors de la création : $e")),
+        SnackBar(content: Text("Couldn't create your profile: $e")),
       );
     }
   }
