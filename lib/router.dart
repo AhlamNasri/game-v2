@@ -1,6 +1,7 @@
 import 'package:fashion_room_girls/presentation/auth/first_screen.dart';
 import 'package:fashion_room_girls/presentation/auth/login_screen.dart';
 import 'package:fashion_room_girls/presentation/auth/register_screen.dart';
+import 'package:fashion_room_girls/presentation/character_selection/character_selection_screen.dart';
 import 'package:fashion_room_girls/presentation/competition/competition_intro_screen.dart';
 import 'package:fashion_room_girls/presentation/competition/lobby_screen.dart';
 import 'package:fashion_room_girls/presentation/competition/play_zone_screen.dart';
