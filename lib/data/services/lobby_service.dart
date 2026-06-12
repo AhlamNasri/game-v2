@@ -21,10 +21,10 @@ class LobbyService {
   final List<String> _botAvatars = ["avatar1", "avatar2", "avatar3"];
 
   final List<String> _botDolls = [
-    "assets/bots/poupee_chic.png",
-    "assets/bots/poupee_gala.png",
-    "assets/bots/poupee_cyber.png",
-    "assets/bots/poupee_hiver.png",
+    "assets/bots/avatar4.png",
+    "assets/bots/avatar5.png",
+    "assets/bots/avatar6.png",
+    "assets/bots/avatar7.png",
   ];
 
   Future<String> findOrCreateLobby({

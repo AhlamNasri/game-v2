@@ -194,7 +194,7 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
             final botName =
                 player['nickname'] as String? ?? 'Bot';
             final botDoll = player['dollImage'] as String? ??
-                'assets/bots/poupee_chic.png';
+                'assets/bots/avatar4.png';
             await lobbyRef
                 .collection('submitted_outfits')
                 .doc(botUid)

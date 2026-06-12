@@ -589,7 +589,7 @@ class _WinnerOutfitView extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isBot) {
       final botImage = outfitData['botImage'] as String? ??
-          'assets/bots/poupee_chic.png';
+          'assets/bots/avatar4.png';
       return Image.asset(
         botImage,
         fit: BoxFit.contain,
