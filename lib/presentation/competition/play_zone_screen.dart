@@ -14,7 +14,6 @@ import '../../data/services/lobby_service.dart';
 import '../../theme/app_effects.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_widgets.dart';
-import '../dressing/widgets/dressup_widgets.dart';
 import '../dressing/widgets/interactive_doll_view.dart';
 import '../dressing/widgets/wardrobe_panel.dart';
 
@@ -510,13 +509,6 @@ class _CompetitionDressingPanel extends ConsumerWidget {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 8),
-          StickerButton(
-            label: 'Random',
-            colors: const [AppColors.accent, Color(0xFF8B5CC0)],
-            onTap: () =>
-                ref.read(characterProvider.notifier).applyBestStyle(),
           ),
         ],
       ),

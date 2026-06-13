@@ -27,11 +27,6 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    if (user.isAnonymous) {
-      _showSignInSheet();
-      return;
-    }
-
     setState(() => _isJoiningLobby = true);
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -60,66 +55,6 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     } finally {
       if (mounted) setState(() => _isJoiningLobby = false);
     }
-  }
-
-  void _showSignInSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.textLight,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('Join the Contest', style: AppTextStyles.heading),
-            const SizedBox(height: 8),
-            Text(
-              'Sign in to compete in the fashion shows!',
-              style: AppTextStyles.body,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    label: 'Log In',
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      context.push('/login');
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppButton(
-                    label: 'Sign Up',
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      context.push('/register');
-                    },
-                    colorStart: AppColors.accent,
-                    colorEnd: const Color(0xFF8B5CC0),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showAchievements(BuildContext context, Set<String> earnedIds) {

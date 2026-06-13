@@ -20,14 +20,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // 🚀 ACTION DE L'INSCRIPTION & FUSION
   Future<void> _handleRegister() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     UserService userService = UserService();
 
     if (email.isEmpty || password.isEmpty) {
-      _showSnackBar("Please fill in all fields");
+      _showSnackBar("Oups ! Remplis tous les champs ✨");
       return;
     }
 
@@ -41,14 +40,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       String finalUid = "";
 
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      String currentNickname = prefs.getString('user_nickname') ?? "Player";
-      String currentAvatarId =
-          prefs.getString('user_avatarId') ?? "avatar1";
+      String currentNickname = prefs.getString('user_nickname') ?? "Joueur";
+      String currentAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
 
       if (currentUser != null && currentUser.isAnonymous) {
-        UserCredential userCredential = await currentUser.linkWithCredential(
-          credential,
-        );
+        UserCredential userCredential = await currentUser.linkWithCredential(credential);
         finalUid = userCredential.user!.uid;
 
         await userCredential.user?.updateDisplayName(currentNickname);
@@ -58,9 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             .doc(finalUid)
             .update({'email': email});
 
-        debugPrint(
-          "Anonymous account merged. UID kept: $finalUid, nickname: $currentNickname",
-        );
+        debugPrint("Compte anonyme fusionné. UID conservé : $finalUid, nickname : $currentNickname");
       } else {
         UserCredential userCredential = await _auth
             .createUserWithEmailAndPassword(email: email, password: password);
@@ -75,7 +69,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'avatarId': currentAvatarId,
         });
 
-        debugPrint("Account created. Player ID: $finalUid");
+        debugPrint("Compte créé. ID du joueur : $finalUid");
       }
 
       await userService.saveUserLocally(
@@ -85,21 +79,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (mounted) {
-        context.go('/menu');
+        context.go(
+          widget.roomId.isNotEmpty ? '/lobby?roomId=${widget.roomId}' : '/menu',
+        );
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
-        _showSnackBar('This email is already used by another player.');
+        _showSnackBar('Cet e-mail est déjà utilisé par un autre joueur.');
       } else if (e.code == 'weak-password') {
-        _showSnackBar('Password must be at least 6 characters.');
+        _showSnackBar('Le mot de passe doit contenir au moins 6 caractères.');
       } else if (e.code == 'credential-already-in-use') {
-        _showSnackBar('This email is already linked to an account.');
+        _showSnackBar('Cet e-mail est déjà lié à un compte existant.');
       } else {
-        _showSnackBar('Error: ${e.message}');
+        _showSnackBar('Erreur : ${e.message}');
       }
     } catch (e) {
-      debugPrint("Registration error: $e");
-      _showSnackBar('Something went wrong. Please try again.');
+      debugPrint("Erreur Inscription : $e");
+      _showSnackBar("Une erreur est survenue lors de l'inscription.");
     }
   }
 
@@ -126,11 +122,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
-      // 👑 ÉTAPE 1 : On réactive le redimensionnement pour laisser de la place au clavier
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // 1. Fond d'écran
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -139,29 +133,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
           ),
-
-          // 2. Contenu Horizontal
           SafeArea(
             child: Row(
               children: [
-                // 🏛️ PARTIE GAUCHE : Titre et Poupée (Fixe, ne bouge pas)
                 Expanded(
                   flex: 4,
                   child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 40.0,
-                      top: 25.0,
-                      bottom: 10.0,
-                    ),
+                    padding: const EdgeInsets.only(left: 40.0, top: 25.0, bottom: 10.0),
                     child: Stack(
                       alignment: Alignment.bottomCenter,
                       children: [
-                        Align(
+                        const Align(
                           alignment: Alignment.topLeft,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
+                            children: [
                               Text(
                                 'Fashion Room',
                                 style: TextStyle(
@@ -194,13 +181,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                 ),
-
-                // 📝 PARTIE DROITE : Formulaire avec Scroll intelligent pour le clavier
                 Expanded(
                   flex: 6,
                   child: Center(
-                    // 👑 ÉTAPE 2 : On encapsule la carte de droite dans un ScrollView
-                    // pour qu'elle puisse remonter lorsque le clavier apparaît
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
                       child: Padding(
@@ -213,10 +196,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(30),
                           child: BackdropFilter(
-                            filter: ImageFilter.blur(
-                              sigmaX: 12.0,
-                              sigmaY: 12.0,
-                            ),
+                            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 30.0,
@@ -233,7 +213,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   const Text(
-                                    'Create Profile',
+                                    'Créer un profil',
                                     style: TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
@@ -241,25 +221,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 15),
-
-                                  // Champ Email
                                   _buildPinkField(
                                     hintText: 'Email',
                                     icon: Icons.email_outlined,
                                     controllerInput: _emailController,
                                   ),
                                   const SizedBox(height: 12),
-
-                                  // Champ Password
                                   _buildPinkField(
-                                    hintText: 'Create Password',
+                                    hintText: 'Créer un mot de passe',
                                     icon: Icons.lock_outline,
                                     isPassword: true,
                                     controllerInput: _passwordController,
                                   ),
                                   const SizedBox(height: 20),
-
-                                  // Bouton Start Adventure
                                   Container(
                                     width: double.infinity,
                                     height: 50,
@@ -275,9 +249,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       borderRadius: BorderRadius.circular(25),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(
-                                            0xFFA594F9,
-                                          ).withValues(alpha: 0.4),
+                                          color: const Color(0xFFA594F9)
+                                              .withValues(alpha: 0.4),
                                           blurRadius: 8,
                                           offset: const Offset(0, 4),
                                         ),
@@ -289,13 +262,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         backgroundColor: Colors.transparent,
                                         shadowColor: Colors.transparent,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            25,
-                                          ),
+                                          borderRadius: BorderRadius.circular(25),
                                         ),
                                       ),
                                       child: const Text(
-                                        'Start Adventure',
+                                        "Lancer l'aventure",
                                         style: TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
@@ -305,13 +276,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 15),
-
-                                  // Redirection vers Login
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       const Text(
-                                        'Already have a profile? ',
+                                        'Déjà un profil ? ',
                                         style: TextStyle(
                                           color: Color(0xFF5D3768),
                                           fontSize: 13,
@@ -320,12 +289,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       GestureDetector(
                                         onTap: () => context.go('/login'),
                                         child: const Text(
-                                          'Login',
+                                          'Connexion',
                                           style: TextStyle(
                                             color: Color(0xFF5D3768),
                                             fontWeight: FontWeight.bold,
-                                            decoration:
-                                                TextDecoration.underline,
+                                            decoration: TextDecoration.underline,
                                           ),
                                         ),
                                       ),
@@ -343,8 +311,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ],
             ),
           ),
-
-          // 3. Étoile décorative
           const Positioned(
             right: 20,
             top: 20,

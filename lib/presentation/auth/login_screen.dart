@@ -17,7 +17,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -26,9 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   static const int boxColor2 = 0xFFFF5A60;
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   // 📧 CONNEXION EMAIL
@@ -38,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
     UserService userService = UserService();
 
     if (email.isEmpty || password.isEmpty) {
-      _showSnackBar("Please fill in all fields");
+      _showSnackBar("Oups ! Remplis tous les champs ✨");
       return;
     }
 
@@ -46,9 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       User? currentUser = _auth.currentUser;
 
-      String currentNickname = prefs.getString('user_nickname') ?? "Player";
-      String currentAvatarId =
-          prefs.getString('user_avatarId') ?? "avatar1";
+      String currentNickname = prefs.getString('user_nickname') ?? "Joueur";
+      String currentAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
       bool wasAnonymous = currentUser != null && currentUser.isAnonymous;
 
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
@@ -67,29 +63,29 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
 
         Map<String, dynamic> oldData = userDoc.data() as Map<String, dynamic>;
-        String oldNickname = oldData['nickname'] ?? "Player";
-        String oldAvatarId = oldData['avatarId'] ?? "avatar1";
+        String oldNickname = oldData['nickname'] ?? "Joueur";
+        String oldAvatarId = oldData['avatarId'] ?? "default_avatar";
 
         bool? retrieveOldGame = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: const Text("Existing save found"),
+              title: const Text("Partie existante trouvée ! ✨"),
               content: Text(
-                "You've played before! Want to restore your old doll ($oldNickname), or overwrite your account to play with your current new doll?",
+                "Tu as déjà joué ! Veux-tu récupérer ton ancienne poupée ($oldNickname) ou écraser ton compte pour rejouer avec ta nouvelle poupée actuelle ?",
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   child: const Text(
-                    "Replay (Overwrite)",
+                    "Rejouer (Écraser)",
                     style: TextStyle(color: Colors.red),
                   ),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text("Restore old doll"),
+                  child: const Text("Récupérer l'ancienne"),
                 ),
               ],
             );
@@ -127,45 +123,26 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('uid', existingUid);
         if (userDoc.exists) {
           Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-          await prefs.setString('user_nickname', data['nickname'] ?? "Player");
-          await prefs.setString(
-            'user_avatarId',
-            data['avatarId'] ?? "avatar1",
-          );
+          await prefs.setString('user_nickname', data['nickname'] ?? "Joueur");
+          await prefs.setString('user_avatarId', data['avatarId'] ?? "default_avatar");
         }
       }
 
       if (mounted) {
         context.go(
-          widget.roomId.isNotEmpty
-              ? '/lobby?roomId=${widget.roomId}'
-              : '/menu',
+          widget.roomId.isNotEmpty ? '/lobby?roomId=${widget.roomId}' : '/menu',
         );
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
-        _showSnackBar('No user found, or incorrect password.');
+        _showSnackBar('Aucun utilisateur trouvé ou mot de passe incorrect.');
       } else if (e.code == 'wrong-password') {
-        _showSnackBar('Incorrect password.');
+        _showSnackBar('Le mot de passe est incorrect.');
       } else {
         _showSnackBar('Erreur : ${e.message}');
       }
     } catch (e) {
       _showSnackBar("Une erreur est survenue lors de la connexion.");
-    }
-  }
-
-  // 👤 CONNEXION INVITÉ (anonyme)
-  Future<void> _handleGuestLogin() async {
-    try {
-      await FirebaseAuth.instance.signInAnonymously();
-      final prefs = await SharedPreferences.getInstance();
-      final hasProfile = prefs.getString('user_uid') != null;
-      if (mounted) {
-        context.go(hasProfile ? '/menu' : '/first');
-      }
-    } on FirebaseAuthException catch (e) {
-      _showSnackBar('Guest sign-in failed: ${e.message}');
     }
   }
 
@@ -180,8 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (googleSignIn.supportsAuthenticate()) {
-        final GoogleSignInAccount googleUser = await googleSignIn
-            .authenticate();
+        final GoogleSignInAccount googleUser = await googleSignIn.authenticate();
 
         final GoogleSignInAuthentication googleAuth = googleUser.authentication;
         final String? idToken = googleAuth.idToken;
@@ -192,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
         final String accessToken = authorization.accessToken;
 
         if (idToken == null) {
-          _showSnackBar("Error: couldn't retrieve Google tokens.");
+          _showSnackBar("Erreur : Impossible de récupérer les jetons Google.");
           return;
         }
 
@@ -204,9 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
         User? currentUser = _auth.currentUser;
         final SharedPreferences prefs = await SharedPreferences.getInstance();
 
-        UserCredential checkCredential = await _auth.signInWithCredential(
-          credential,
-        );
+        UserCredential checkCredential = await _auth.signInWithCredential(credential);
         String googleUid = checkCredential.user!.uid;
         String? googleEmail = checkCredential.user?.email;
 
@@ -219,29 +193,29 @@ class _LoginScreenState extends State<LoginScreen> {
           if (!mounted) return;
 
           Map<String, dynamic> oldData = userDoc.data() as Map<String, dynamic>;
-          String oldNickname = oldData['nickname'] ?? "Player";
-          String oldAvatarId = oldData['avatarId'] ?? "avatar1";
+          String oldNickname = oldData['nickname'] ?? "Joueur";
+          String oldAvatarId = oldData['avatarId'] ?? "default_avatar";
 
           bool? retrieveOldGame = await showDialog<bool>(
             context: context,
             barrierDismissible: false,
             builder: (BuildContext context) {
               return AlertDialog(
-                title: const Text("Existing save found"),
+                title: const Text("Partie existante trouvée ! ✨"),
                 content: Text(
-                  "You've played before! Want to restore your old doll ($oldNickname), or overwrite your account to play with your current new doll?",
+                  "Tu as déjà joué ! Veux-tu récupérer ton ancienne poupée ($oldNickname) ou écraser ton compte pour rejouer avec ta nouvelle poupée actuelle ?",
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(false),
                     child: const Text(
-                      "Replay (Overwrite)",
+                      "Rejouer (Écraser)",
                       style: TextStyle(color: Colors.red),
                     ),
                   ),
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text("Restore old doll"),
+                    child: const Text("Récupérer l'ancienne"),
                   ),
                 ],
               );
@@ -258,13 +232,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 .doc(googleUid)
                 .delete();
 
-            String currentNickname =
-                prefs.getString('user_nickname') ?? "Player";
-            String currentAvatarId =
-                prefs.getString('user_avatarId') ?? "avatar1";
+            String currentNickname = prefs.getString('user_nickname') ?? "Joueur";
+            String currentAvatarId = prefs.getString('user_avatarId') ?? "default_avatar";
 
-            UserCredential linkedCredential = await currentUser
-                .linkWithCredential(credential);
+            UserCredential linkedCredential =
+                await currentUser.linkWithCredential(credential);
             String finalUid = linkedCredential.user!.uid;
 
             await linkedCredential.user?.updateDisplayName(currentNickname);
@@ -289,28 +261,20 @@ class _LoginScreenState extends State<LoginScreen> {
           await prefs.setString('uid', googleUid);
           if (userDoc.exists) {
             Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-            await prefs.setString(
-              'user_nickname',
-              data['nickname'] ?? "Player",
-            );
-            await prefs.setString(
-              'user_avatarId',
-              data['avatarId'] ?? "avatar1",
-            );
+            await prefs.setString('user_nickname', data['nickname'] ?? "Joueur");
+            await prefs.setString('user_avatarId', data['avatarId'] ?? "default_avatar");
           }
         }
 
         if (mounted) {
           context.go(
-            widget.roomId.isNotEmpty
-                ? '/lobby?roomId=${widget.roomId}'
-                : '/menu',
+            widget.roomId.isNotEmpty ? '/lobby?roomId=${widget.roomId}' : '/menu',
           );
         }
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'credential-already-in-use') {
-        _showSnackBar('This Google account already belongs to another player.');
+        _showSnackBar('Ce compte Google appartient déjà à un autre joueur.');
       } else {
         _showSnackBar('Erreur Firebase : ${e.message}');
       }
@@ -329,7 +293,6 @@ class _LoginScreenState extends State<LoginScreen> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Background
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -338,21 +301,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-
           SafeArea(
             child: Center(
               child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: isLandscape
-                      ? 650
-                      : 400, // Plus large en paysage pour accueillir les 2 colonnes
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20.0,
-                  vertical: 10.0,
-                ),
+                constraints: BoxConstraints(maxWidth: isLandscape ? 650 : 400),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
                 child: SingleChildScrollView(
-                  // Le scroll ne s'active que si le clavier est présent
                   physics: isKeyboardOpen
                       ? const BouncingScrollPhysics()
                       : const NeverScrollableScrollPhysics(),
@@ -382,16 +336,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
-
-                            // 🌗 Division de l'écran en deux colonnes (ou lignes si mode portrait vertical)
                             Flex(
-                              direction: isLandscape
-                                  ? Axis.horizontal
-                                  : Axis.vertical,
+                              direction: isLandscape ? Axis.horizontal : Axis.vertical,
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                // --- CÔTÉ GAUCHE : EMAIL & PASSWORD ---
                                 Expanded(
                                   flex: isLandscape ? 11 : 0,
                                   child: Column(
@@ -404,7 +353,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                       const SizedBox(height: 10),
                                       _buildTextField(
-                                        hintText: 'Password',
+                                        hintText: 'Mot de passe',
                                         icon: Icons.lock_outline,
                                         isPassword: true,
                                         controllerInput: _passwordController,
@@ -420,9 +369,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                               Color(boxColor2),
                                             ],
                                           ),
-                                          borderRadius: BorderRadius.circular(
-                                            25,
-                                          ),
+                                          borderRadius: BorderRadius.circular(25),
                                         ),
                                         child: ElevatedButton(
                                           onPressed: _handleEmailLogin,
@@ -431,7 +378,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                             shadowColor: Colors.transparent,
                                           ),
                                           child: const Text(
-                                            'Login',
+                                            'Connexion',
                                             style: TextStyle(
                                               fontSize: 16,
                                               color: Colors.white,
@@ -442,26 +389,23 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                       const SizedBox(height: 10),
                                       Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           const Text(
-                                            "No profile yet? ",
+                                            "Pas de profil ? ",
                                             style: TextStyle(
                                               color: Color(0xFF5D3768),
                                               fontSize: 12,
                                             ),
                                           ),
                                           GestureDetector(
-                                            onTap: () =>
-                                                context.go('/register'),
+                                            onTap: () => context.go('/register'),
                                             child: const Text(
-                                              'S\'inscrire',
+                                              "S'inscrire",
                                               style: TextStyle(
                                                 color: Color(0xFF5D3768),
                                                 fontWeight: FontWeight.bold,
-                                                decoration:
-                                                    TextDecoration.underline,
+                                                decoration: TextDecoration.underline,
                                                 fontSize: 12,
                                               ),
                                             ),
@@ -471,36 +415,27 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ],
                                   ),
                                 ),
-
-                                // --- SÉPARATEUR ---
                                 if (isLandscape)
                                   Container(
                                     height: 140,
                                     width: 1.5,
                                     color: Colors.white.withValues(alpha: 0.5),
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                    ),
+                                    margin: const EdgeInsets.symmetric(horizontal: 20),
                                   )
                                 else
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 15,
-                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 15),
                                     child: Row(
                                       children: [
                                         Expanded(
                                           child: Divider(
-                                            color: Colors.white
-                                                .withValues(alpha: 0.4),
+                                            color: Colors.white.withValues(alpha: 0.4),
                                           ),
                                         ),
                                         const Padding(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                          ),
+                                          padding: EdgeInsets.symmetric(horizontal: 10),
                                           child: Text(
-                                            "OR",
+                                            "OU",
                                             style: TextStyle(
                                               color: Color(0xFF5D3768),
                                               fontSize: 12,
@@ -509,15 +444,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                         Expanded(
                                           child: Divider(
-                                            color: Colors.white
-                                                .withValues(alpha: 0.4),
+                                            color: Colors.white.withValues(alpha: 0.4),
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-
-                                // --- CÔTÉ DROIT : SOCIAL LOGIN (GOOGLE) ---
                                 Expanded(
                                   flex: isLandscape ? 9 : 0,
                                   child: Column(
@@ -541,19 +473,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                             'assets/login/google.png',
                                             width: 28,
                                             height: 28,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      InkWell(
-                                        onTap: _handleGuestLogin,
-                                        borderRadius: BorderRadius.circular(18),
-                                        child: _buildSocialButton(
-                                          label: 'Guest',
-                                          child: const Icon(
-                                            Icons.person_outline,
-                                            color: Color(0xFF5D3768),
-                                            size: 28,
                                           ),
                                         ),
                                       ),

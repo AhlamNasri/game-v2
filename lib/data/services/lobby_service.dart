@@ -513,6 +513,22 @@ class LobbyService {
             {'votesCount': FieldValue.increment(1)},
           );
         }
+
+        // Auto-vote for any human who didn't cast a vote
+        for (final player in humanPlayers) {
+          final uid = player['uid'] as String;
+          if (votedIds.contains(uid)) continue;
+          final validTargets =
+              outfits.where((o) => o['id'] != uid).toList();
+          if (validTargets.isEmpty) continue;
+          final target =
+              validTargets[_random.nextInt(validTargets.length)];
+          target['votesCount'] = (target['votesCount'] as int) + 1;
+          transaction.update(
+            target['ref'] as DocumentReference<Map<String, dynamic>>,
+            {'votesCount': FieldValue.increment(1)},
+          );
+        }
       }
 
       outfits.sort((a, b) {
