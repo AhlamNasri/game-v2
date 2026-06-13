@@ -285,14 +285,7 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
                       .where((doc) => doc.id != widget.currentUserId)
                       .toList();
 
-                  // Prefer real human players; show bots only when no human has submitted yet.
-                  final realOpponents = allOpponents.where((doc) {
-                    final d = doc.data() as Map<String, dynamic>;
-                    return d['isBot'] != true;
-                  }).toList();
-
-                  final opponentsOutfits =
-                      realOpponents.isNotEmpty ? realOpponents : allOpponents;
+                  final opponentsOutfits = allOpponents;
 
                   if (opponentsOutfits.isEmpty) {
                     return Center(
