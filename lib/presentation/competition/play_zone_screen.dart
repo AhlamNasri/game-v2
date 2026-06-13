@@ -10,12 +10,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../application/character_provider.dart';
 import '../../data/models/clothing_item.dart';
+import '../../data/services/lobby_service.dart';
 import '../../theme/app_effects.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_widgets.dart';
 import '../dressing/widgets/dressup_widgets.dart';
+import '../dressing/widgets/interactive_doll_view.dart';
 import '../dressing/widgets/wardrobe_panel.dart';
-import '../widgets/character_preview.dart';
 
 class PlayZoneScreen extends ConsumerStatefulWidget {
   final String roomId;
@@ -33,15 +34,25 @@ class PlayZoneScreen extends ConsumerStatefulWidget {
 
 class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
     with SingleTickerProviderStateMixin {
+  final LobbyService _lobbyService = LobbyService();
+
+  // Lobby stream
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+      _lobbySubscription;
+  Timer? _ticker;
+  DateTime? _playEndsAt;
+
   // Meta
   String _theme = '';
   String _username = '';
   bool _isLoadingMeta = true;
 
-  // Timer
-  int _secondsLeft = 180;
-  Timer? _timer;
+  // Timer display
+  int _secondsLeft = LobbyService.playDuration.inSeconds;
   bool _isSubmitting = false;
+  bool _submitted = false;
+  bool _timeUpHandled = false;
+  bool _navigating = false;
   bool _showSubmitBurst = false;
   late final AnimationController _pulseController;
 
@@ -61,39 +72,132 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _loadMeta();
+    _loadUsername();
     _loadOwnedItems();
-    _startTimer();
+    _bootstrap();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _ticker?.cancel();
+    _lobbySubscription?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
 
+  // ── bootstrap ──────────────────────────────────────────
+
+  Future<void> _bootstrap() async {
+    final userId = widget.currentUserId.trim();
+    if (widget.roomId.trim().isEmpty || userId.isEmpty) return;
+
+    try {
+      await _lobbyService.ensurePlayWindow(
+        lobbyId: widget.roomId,
+        requestedByUserId: userId,
+      );
+    } catch (_) {
+      // ensurePlayWindow is best-effort; only the host actually writes
+    }
+
+    _listenToLobby();
+  }
+
+  void _listenToLobby() {
+    _lobbySubscription?.cancel();
+    _lobbySubscription = FirebaseFirestore.instance
+        .collection('lobbies')
+        .doc(widget.roomId)
+        .snapshots()
+        .listen(_handleLobbySnapshot);
+  }
+
+  void _handleLobbySnapshot(
+      DocumentSnapshot<Map<String, dynamic>> snapshot) {
+    if (!mounted) return;
+    final data = snapshot.data();
+    if (data == null) return;
+
+    final status = data['status'] as String? ?? 'waiting';
+    if (status == 'voting' || status == 'results') {
+      _goToVoting();
+      return;
+    }
+
+    final playEndsAt = data['playEndsAt'];
+    final submittedIds = <String>{
+      ...?((data['submittedPlayerIds'] as List?)
+              ?.map((e) => e.toString()))
+    };
+
+    setState(() {
+      _theme = data['theme'] as String? ?? '';
+      _isLoadingMeta = false;
+      _submitted = submittedIds.contains(widget.currentUserId);
+      _playEndsAt =
+          playEndsAt is Timestamp ? playEndsAt.toDate() : null;
+    });
+
+    _syncTicker();
+  }
+
+  void _syncTicker() {
+    _ticker ??=
+        Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _tick();
+  }
+
+  void _tick() {
+    if (!mounted || _navigating) return;
+
+    final endsAt = _playEndsAt;
+    if (endsAt == null) return;
+
+    final remaining = endsAt.difference(DateTime.now()).inSeconds;
+    final secondsLeft =
+        remaining.clamp(0, LobbyService.playDuration.inSeconds);
+
+    if (_secondsLeft != secondsLeft) {
+      setState(() => _secondsLeft = secondsLeft);
+    }
+
+    if (secondsLeft <= 30 && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    }
+
+    if (secondsLeft == 0 && !_timeUpHandled) {
+      _timeUpHandled = true;
+      if (_submitted) {
+        unawaited(_lobbyService.completePlayIfReady(
+          lobbyId: widget.roomId,
+          requestedByUserId: widget.currentUserId,
+          force: true,
+        ));
+      } else {
+        _submitOutfit(isAuto: true);
+      }
+    }
+  }
+
+  void _goToVoting() {
+    if (_navigating) return;
+    _navigating = true;
+    _ticker?.cancel();
+    _lobbySubscription?.cancel();
+    if (mounted) {
+      context.go(
+        '/voting-zone'
+        '?roomId=${widget.roomId}'
+        '&currentUserId=${widget.currentUserId}',
+      );
+    }
+  }
+
   // ── data loading ───────────────────────────────────────
 
-  Future<void> _loadMeta() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _username = prefs.getString('user_nickname') ?? '';
-
-      final doc = await FirebaseFirestore.instance
-          .collection('lobbies')
-          .doc(widget.roomId)
-          .get();
-
-      if (mounted) {
-        setState(() {
-          _theme = doc.data()?['theme'] as String? ?? '';
-          _isLoadingMeta = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isLoadingMeta = false);
-    }
+  Future<void> _loadUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    _username = prefs.getString('user_nickname') ?? '';
   }
 
   Future<void> _loadOwnedItems() async {
@@ -115,26 +219,6 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
     }
   }
 
-  // ── timer ──────────────────────────────────────────────
-
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      if (_secondsLeft > 1) {
-        setState(() => _secondsLeft--);
-        if (_secondsLeft <= 30 && !_pulseController.isAnimating) {
-          _pulseController.repeat(reverse: true);
-        }
-      } else {
-        t.cancel();
-        _submitOutfit(isAuto: true);
-      }
-    });
-  }
-
   String _formatTime(int s) {
     final m = s ~/ 60;
     final sec = s % 60;
@@ -144,8 +228,8 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
   // ── submit ─────────────────────────────────────────────
 
   Future<void> _submitOutfit({required bool isAuto}) async {
-    if (_isSubmitting) return;
-    _timer?.cancel();
+    if (_isSubmitting || _submitted) return;
+    _ticker?.cancel();
     _pulseController.stop();
     HapticFeedback.mediumImpact();
     setState(() {
@@ -154,7 +238,6 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
     });
 
     try {
-      // Build outfit data from live character state
       final character = ref.read(characterProvider);
       final myOutfitData = <String, dynamic>{
         'gender': character.gender.name,
@@ -165,64 +248,37 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
         ),
       };
 
-      // 3. Write player outfit to Firestore
-      final lobbyRef = FirebaseFirestore.instance
-          .collection('lobbies')
-          .doc(widget.roomId);
+      await _lobbyService.submitHumanOutfit(
+        lobbyId: widget.roomId,
+        userId: widget.currentUserId,
+        username: _username,
+        outfitData: myOutfitData,
+        finishedInTime: !isAuto && _secondsLeft > 0,
+      );
 
-      await lobbyRef
-          .collection('submitted_outfits')
-          .doc(widget.currentUserId)
-          .set({
-        'userId': widget.currentUserId,
-        'username': _username,
-        'outfitData': myOutfitData,
-        'submittedAt': FieldValue.serverTimestamp(),
-        'finishedInTime': !isAuto,
-        'isBot': false,
-        'votesCount': 0,
-      });
+      await _lobbyService.completePlayIfReady(
+        lobbyId: widget.roomId,
+        requestedByUserId: widget.currentUserId,
+        force: isAuto || _secondsLeft <= 0,
+      );
 
-      // 4. Write bot outfits
-      final lobbySnap = await lobbyRef.get();
-      if (lobbySnap.exists) {
-        final players =
-            List<dynamic>.from(lobbySnap.data()?['players'] ?? []);
-        for (final player in players) {
-          if (player['isBot'] == true) {
-            final botUid = player['uid'] as String;
-            final botName =
-                player['nickname'] as String? ?? 'Bot';
-            final botDoll = player['dollImage'] as String? ??
-                'assets/bots/avatar4.png';
-            await lobbyRef
-                .collection('submitted_outfits')
-                .doc(botUid)
-                .set({
-              'userId': botUid,
-              'username': botName,
-              'outfitData': {'isBotOutfit': true, 'botImage': botDoll},
-              'submittedAt': FieldValue.serverTimestamp(),
-              'finishedInTime': true,
-              'isBot': true,
-              'votesCount': 0,
-            }, SetOptions(merge: true));
-          }
-        }
-      }
-
-      // 5. Navigate to voting zone
       if (mounted) {
-        context.go(
-          '/voting-zone?roomId=${widget.roomId}'
-          '&currentUserId=${widget.currentUserId}',
+        setState(() {
+          _submitted = true;
+          _isSubmitting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Look submitted! Waiting for others...'),
+            backgroundColor: AppColors.primary,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Submission failed: $e')),
+          SnackBar(content: Text('Submission failed: $e')),
         );
         setState(() => _isSubmitting = false);
       }
@@ -233,7 +289,6 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
 
   @override
   Widget build(BuildContext context) {
-    final character = ref.watch(characterProvider);
     final isUrgent = _secondsLeft <= 30;
 
     return Scaffold(
@@ -244,7 +299,6 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            // Countdown — pulses red when ≤30 s
             AnimatedBuilder(
               animation: _pulseController,
               builder: (context, child) {
@@ -258,7 +312,9 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
                     children: [
                       Icon(
                         Icons.timer_rounded,
-                        color: isUrgent ? Colors.red[200] : Colors.white,
+                        color: isUrgent
+                            ? Colors.red[200]
+                            : Colors.white,
                         size: 20,
                       ),
                       const SizedBox(width: 5),
@@ -278,7 +334,6 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
               },
             ),
             const SizedBox(width: 14),
-            // Theme label
             Expanded(
               child: Text(
                 _isLoadingMeta
@@ -292,31 +347,49 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            // Submit button
-            _isSubmitting
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2.5),
-                  )
-                : FilledButton.icon(
-                    onPressed: () => _submitOutfit(isAuto: false),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primaryDark,
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                    ),
-                    icon: const Icon(
-                        Icons.check_circle_outline_rounded,
+            if (_submitted)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white70,
                         size: 18),
-                    label: const Text(
-                      '✓ Submit',
-                      style: TextStyle(fontWeight: FontWeight.w900),
+                    SizedBox(width: 4),
+                    Text(
+                      'Waiting...',
+                      style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w700),
                     ),
-                  ),
+                  ],
+                ),
+              )
+            else if (_isSubmitting)
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2.5),
+              )
+            else
+              FilledButton.icon(
+                onPressed: () => _submitOutfit(isAuto: false),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.primaryDark,
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
+                ),
+                icon: const Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 18),
+                label: const Text(
+                  '✓ Submit',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
           ],
         ),
       ),
@@ -326,7 +399,6 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Left 40 % — doll preview ──────────────
               SizedBox(
                 width: MediaQuery.sizeOf(context).width * 0.38,
                 child: PulseGlow(
@@ -339,12 +411,20 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
                       AppCard(
                         padding: const EdgeInsets.all(6),
                         child: LayoutBuilder(
-                          builder: (context, constraints) =>
-                              CharacterPreview(
-                            character: character,
-                            width: constraints.maxWidth,
-                            height: constraints.maxHeight,
-                          ),
+                          builder: (context, constraints) {
+                            // Fit the doll within both width and height,
+                            // keeping the 1:1.32 aspect ratio.
+                            final dollW = (constraints.maxHeight / 1.32)
+                                .clamp(0.0, constraints.maxWidth);
+                            return Center(
+                              child: InteractiveDollView(
+                                width: dollW,
+                                selectedCategory: _selectedCategory,
+                                onCategorySelected: (cat) =>
+                                    setState(() => _selectedCategory = cat),
+                              ),
+                            );
+                          },
                         ),
                       ),
                       if (_showSubmitBurst)
@@ -358,7 +438,6 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              // ── Right 60 % — dressing panel ───────────
               Expanded(
                 child: _CompetitionDressingPanel(
                   selectedCategory: _selectedCategory,
@@ -377,8 +456,7 @@ class _PlayZoneScreenState extends ConsumerState<PlayZoneScreen>
 }
 
 // ─────────────────────────────────────────────────────────
-//  Competition dressing panel (right 60%) — reuses the shared
-//  wardrobe so the closet and the contest stay perfectly in sync.
+//  Competition dressing panel (right 60%)
 // ─────────────────────────────────────────────────────────
 
 class _CompetitionDressingPanel extends ConsumerWidget {
@@ -400,29 +478,37 @@ class _CompetitionDressingPanel extends ConsumerWidget {
     final categories = railCategoriesFor(character.gender.name);
     final active = categories.contains(selectedCategory)
         ? selectedCategory
-        : (categories.isNotEmpty ? categories.first : ClothingCategory.dresses);
+        : (categories.isNotEmpty
+            ? categories.first
+            : ClothingCategory.dresses);
 
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 62,
-            child: CategoryRail(
-              categories: categories,
-              selected: active,
-              onSelected: onCategorySelected,
-              axis: Axis.horizontal,
-            ),
-          ),
-          const SizedBox(height: 8),
           Expanded(
-            child: WardrobePanel(
-              category: active,
-              ownedItemIds: ownedItemIds,
-              isLoading: isLoadingOwned,
-              axis: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: 60,
+                  child: CategoryRail(
+                    categories: categories,
+                    selected: active,
+                    onSelected: onCategorySelected,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: WardrobePanel(
+                    category: active,
+                    ownedItemIds: ownedItemIds,
+                    isLoading: isLoadingOwned,
+                    axis: Axis.horizontal,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),

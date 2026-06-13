@@ -3,6 +3,7 @@ import 'package:fashion_room_girls/application/character_provider.dart';
 import 'package:fashion_room_girls/data/models/achievement.dart';
 import 'package:fashion_room_girls/data/models/character_customization.dart';
 import 'package:fashion_room_girls/data/services/lobby_service.dart';
+import 'package:fashion_room_girls/presentation/widgets/character_preview.dart';
 import 'package:fashion_room_girls/theme/app_effects.dart';
 import 'package:fashion_room_girls/theme/app_theme.dart';
 import 'package:fashion_room_girls/theme/app_widgets.dart';
@@ -222,7 +223,6 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final nickname = isAnonymous
         ? 'Guest'
         : (userData['nickname'] as String? ?? 'Player');
-    final avatarId = userData['avatarId'] as String?;
     final coins = isAnonymous ? 0 : (userData['coins'] as int? ?? 0);
     final level = userData['level'] as int? ?? 1;
     final xp = userData['xp'] as int? ?? 0;
@@ -249,8 +249,8 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                 SizedBox(
                   width: MediaQuery.sizeOf(context).width * 0.27,
                   child: _LeftPanel(
+                    character: character,
                     nickname: nickname,
-                    avatarId: avatarId,
                     stats: stats,
                     showStats: !isAnonymous,
                     onEdit: () => context.push('/character'),
@@ -353,16 +353,16 @@ class _TopBar extends StatelessWidget {
 // ─────────────────────────────────────────────────────────
 
 class _LeftPanel extends StatelessWidget {
+  final CharacterCustomization character;
   final String nickname;
-  final String? avatarId;
   final PlayerStats stats;
   final bool showStats;
   final VoidCallback onEdit;
   final VoidCallback onAchievements;
 
   const _LeftPanel({
+    required this.character,
     required this.nickname,
-    required this.avatarId,
     required this.stats,
     required this.showStats,
     required this.onEdit,
@@ -371,85 +371,105 @@ class _LeftPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Avatar circle
-          if (avatarId != null && avatarId!.isNotEmpty)
-            CircleAvatar(
-              radius: 18,
-              backgroundImage: AssetImage('assets/avatars/$avatarId.png'),
-              onBackgroundImageError: (err, _) {},
-              backgroundColor: AppColors.primaryLight,
-            )
-          else
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: AppColors.primaryLight,
-              child: const Icon(
-                Icons.person,
-                color: AppColors.primaryDark,
-                size: 20,
-              ),
-            ),
-          const SizedBox(height: 4),
-          // Nickname
-          Text(
-            nickname,
-            style: AppTextStyles.subheading,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (showStats) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _StatChip(emoji: '🏆', value: '${stats.wins}'),
-                const SizedBox(width: 8),
-                _StatChip(emoji: '🔥', value: '${stats.currentStreak}'),
-              ],
-            ),
-          ],
-          const SizedBox(height: 8),
-          // Edit button
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onEdit,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryLight,
-                foregroundColor: AppColors.primaryDark,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-                shape: const StadiumBorder(),
-              ),
-              child: const Text('Edit 🎨'),
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: onAchievements,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.accent,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                textStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              child: const Text('🏅 Achievements'),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF0F8), Color(0xFFF5E8FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryLight.withValues(alpha: 0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Column(
+          children: [
+            // Doll preview — fills available height
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                alignment: Alignment.bottomCenter,
+                child: CharacterPreview(character: character, width: 190),
+              ),
+            ),
+            // Info footer
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.82),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    nickname,
+                    style: AppTextStyles.subheading,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (showStats) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _StatChip(emoji: '🏆', value: '${stats.wins}'),
+                        const SizedBox(width: 6),
+                        _StatChip(emoji: '🔥', value: '${stats.currentStreak}'),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                  ] else
+                    const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: onEdit,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 5),
+                            textStyle: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                            ),
+                            shape: const StadiumBorder(),
+                          ),
+                          child: const Text('Edit 🎨'),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        onPressed: onAchievements,
+                        icon: const Text('🏅',
+                            style: TextStyle(fontSize: 18)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.accentLight,
+                          shape: const CircleBorder(),
+                        ),
+                        tooltip: 'Achievements',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -645,29 +665,60 @@ class _NavCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lighter = Color.lerp(color, Colors.white, 0.52)!;
     return TapBounce(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: [color, lighter],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.55),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: color.withValues(alpha: 0.42),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
-        child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(icon, style: const TextStyle(fontSize: 48)),
-              const SizedBox(height: 6),
-              Text(label, style: AppTextStyles.subheading),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.80),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.07),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(icon, style: const TextStyle(fontSize: 24)),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                label,
+                style: AppTextStyles.subheading
+                    .copyWith(color: AppColors.textDark),
+              ),
               const SizedBox(height: 2),
-              Text(caption, style: AppTextStyles.caption),
+              Text(
+                caption,
+                style:
+                    AppTextStyles.caption.copyWith(color: AppColors.textMid),
+              ),
             ],
           ),
         ),
@@ -695,66 +746,97 @@ class _CompeteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return TapBounce(
       onTap: onTap,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFE0D0FF),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFE0D0FF).withValues(alpha: 0.55),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+      child: PulseGlow(
+        enabled: !isAnonymous && !isLoading,
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.accent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.45),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child:
+                                  Text('🌟', style: TextStyle(fontSize: 24)),
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            'Compete',
+                            style: AppTextStyles.subheading
+                                .copyWith(color: Colors.white),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Fashion contest',
+                            style: AppTextStyles.caption
+                                .copyWith(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+              ),
             ),
-            child: Center(
-              child: isLoading
-                  ? const CircularProgressIndicator(color: AppColors.accent)
-                  : Column(
+            // Lock overlay for anonymous / guest users
+            if (isAnonymous)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.38),
+                  child: Center(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('🌟', style: TextStyle(fontSize: 48)),
+                        const Icon(
+                          Icons.lock_rounded,
+                          color: Colors.white,
+                          size: 30,
+                        ),
                         const SizedBox(height: 6),
-                        Text('Compete', style: AppTextStyles.subheading),
-                        const SizedBox(height: 2),
-                        Text('Fashion contest', style: AppTextStyles.caption),
+                        Text(
+                          'Sign in\nto compete',
+                          style: AppTextStyles.caption.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     ),
-            ),
-          ),
-          // Lock overlay for anonymous / guest users
-          if (isAnonymous)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.38),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Sign in to compete',
-                        style: AppTextStyles.caption.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

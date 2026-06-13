@@ -72,17 +72,27 @@ class CharacterCustomization {
   }
 
   String get headHairAsset {
-    final style = hairStyle; // 'hair1' or 'hair2'
-    switch (gender) {
-      case CharacterGender.girl:
-        return style == 'hair2'
+    final style = hairStyle;
+    final isLight = skinTone != 'tan';
+
+    if (gender == CharacterGender.girl) {
+      if (style == 'hair2') {
+        return isLight
             ? 'assets/characters/hair/girl_light_head_hair2_hair_only.png'
-            : 'assets/characters/hair/girl_tan_head_hair1_hair_only.png';
-      case CharacterGender.boy:
-        return style == 'hair2'
-            ? 'assets/characters/hair/boy_light_head_hair2_hair_only.png'
-            : 'assets/characters/hair/boy_light_head_hair1_hair_only.png';
+            : 'assets/characters/hair/girl_tan_head_hair2_hair_only.png';
+      }
+      // hair1: light variant is missing from assets, tan file used for both tones
+      return 'assets/characters/hair/girl_tan_head_hair1_hair_only.png';
     }
+
+    if (style == 'hair2') {
+      return isLight
+          ? 'assets/characters/hair/boy_light_head_hair2_hair_only.png'
+          : 'assets/characters/hair/boy_tan_head_hair2_hair_only.png';
+    }
+    return isLight
+        ? 'assets/characters/hair/boy_light_head_hair1_hair_only.png'
+        : 'assets/characters/hair/boy_tan_head_hair1_hair_only.png';
   }
 
   /// Per-style, per-body-variant LayerSpec for the head-hair PNG.

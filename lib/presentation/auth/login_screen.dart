@@ -155,6 +155,20 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // 👤 CONNEXION INVITÉ (anonyme)
+  Future<void> _handleGuestLogin() async {
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+      final prefs = await SharedPreferences.getInstance();
+      final hasProfile = prefs.getString('user_uid') != null;
+      if (mounted) {
+        context.go(hasProfile ? '/menu' : '/first');
+      }
+    } on FirebaseAuthException catch (e) {
+      _showSnackBar('Guest sign-in failed: ${e.message}');
+    }
+  }
+
   // 🌐 CONNEXION GOOGLE
   Future<void> _handleGoogleLogin() async {
     UserService userService = UserService();
@@ -527,6 +541,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                             'assets/login/google.png',
                                             width: 28,
                                             height: 28,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      InkWell(
+                                        onTap: _handleGuestLogin,
+                                        borderRadius: BorderRadius.circular(18),
+                                        child: _buildSocialButton(
+                                          label: 'Guest',
+                                          child: const Icon(
+                                            Icons.person_outline,
+                                            color: Color(0xFF5D3768),
+                                            size: 28,
                                           ),
                                         ),
                                       ),

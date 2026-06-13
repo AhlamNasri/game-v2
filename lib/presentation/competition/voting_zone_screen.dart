@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/models/character_customization.dart';
 import '../../data/models/clothing_item.dart';
 import '../../data/repositories/fashion_catalog.dart';
+import '../../data/services/lobby_service.dart';
 import '../../theme/app_effects.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_widgets.dart';
@@ -28,62 +28,164 @@ class VotingZoneScreen extends StatefulWidget {
 }
 
 class _VotingZoneScreenState extends State<VotingZoneScreen> {
+  final LobbyService _lobbyService = LobbyService();
+
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+      _lobbySubscription;
+  Timer? _ticker;
+  DateTime? _votingEndsAt;
+
   bool _hasVoted = false;
+  bool _isVoting = false;
+  bool _isFinalizing = false;
+  bool _navigating = false;
+
+  // ValueNotifier isolates timer rebuilds to a single tiny widget —
+  // the rest of the Scaffold (StreamBuilder, grid) never rebuilds per-second.
+  final _secondsNotifier =
+      ValueNotifier<int>(LobbyService.votingDuration.inSeconds);
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToLobby();
+  }
+
+  @override
+  void dispose() {
+    _lobbySubscription?.cancel();
+    _ticker?.cancel();
+    _secondsNotifier.dispose();
+    super.dispose();
+  }
+
+  void _listenToLobby() {
+    if (widget.roomId.trim().isEmpty) return;
+
+    _lobbySubscription = FirebaseFirestore.instance
+        .collection('lobbies')
+        .doc(widget.roomId)
+        .snapshots()
+        .listen(_handleLobbySnapshot);
+  }
+
+  void _handleLobbySnapshot(
+      DocumentSnapshot<Map<String, dynamic>> snapshot) {
+    if (!mounted) return;
+    final data = snapshot.data();
+    if (data == null) return;
+
+    final status = data['status'] as String? ?? 'waiting';
+    if (status == 'results' || status == 'completed') {
+      _goToResults();
+      return;
+    }
+
+    final votedIds = <String>{
+      ...?((data['votedPlayerIds'] as List?)?.map((e) => e.toString()))
+    };
+    final votingEndsAt = data['votingEndsAt'];
+
+    final newHasVoted = votedIds.contains(widget.currentUserId);
+    final newEndsAt =
+        votingEndsAt is Timestamp ? votingEndsAt.toDate() : null;
+
+    // Only rebuild the parent widget when meaningful state actually changes.
+    if (newHasVoted != _hasVoted || newEndsAt != _votingEndsAt) {
+      setState(() {
+        _hasVoted = newHasVoted;
+        _votingEndsAt = newEndsAt;
+      });
+    }
+    _syncTicker();
+  }
+
+  void _syncTicker() {
+    _ticker ??=
+        Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _tick();
+  }
+
+  void _tick() {
+    if (!mounted || _navigating) return;
+    final endsAt = _votingEndsAt;
+    if (endsAt == null) return;
+
+    final remaining = endsAt.difference(DateTime.now()).inSeconds;
+    final seconds =
+        remaining.clamp(0, LobbyService.votingDuration.inSeconds);
+    _secondsNotifier.value = seconds; // no setState — only the timer badge rebuilds
+
+    if (seconds == 0) {
+      unawaited(_completeVoting(force: true));
+    }
+  }
 
   Future<void> _voteForOutfit(String opponentId) async {
-    if (_hasVoted) return;
-
-    setState(() => _hasVoted = true);
+    if (_hasVoted || _isVoting || _isFinalizing) return;
+    setState(() => _isVoting = true);
 
     try {
-      final firestore = FirebaseFirestore.instance;
-      final submittedOutfitsRef = firestore
-          .collection('lobbies')
-          .doc(widget.roomId)
-          .collection('submitted_outfits');
+      final accepted = await _lobbyService.castVote(
+        lobbyId: widget.roomId,
+        voterId: widget.currentUserId,
+        targetUserId: opponentId,
+      );
 
-      await submittedOutfitsRef.doc(opponentId).update({
-        'votesCount': FieldValue.increment(1),
+      if (!mounted) return;
+      setState(() {
+        _hasVoted = true;
+        _isVoting = false;
       });
 
-      // Bots each cast one vote for a random other contestant.
-      final outfitsSnapshot = await submittedOutfitsRef.get();
-      final allOutfits = outfitsSnapshot.docs;
-      final random = Random();
-
-      for (final botDoc in allOutfits) {
-        final botData = botDoc.data();
-        if (botData['isBot'] == true) {
-          final botUid = botDoc.id;
-          final validTargets = allOutfits
-              .where((doc) => doc.id != botUid)
-              .map((doc) => doc.id)
-              .toList();
-          if (validTargets.isNotEmpty) {
-            final chosenTargetId =
-                validTargets[random.nextInt(validTargets.length)];
-            await submittedOutfitsRef.doc(chosenTargetId).update({
-              'votesCount': FieldValue.increment(1),
-            });
-          }
-        }
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Vote counted!'),
-            backgroundColor: AppColors.primary,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            accepted
+                ? 'Vote counted! Waiting for others...'
+                : 'Already voted.',
           ),
-        );
-        Timer(const Duration(seconds: 2), () {
-          if (mounted) {
-            context.go('/result-zone?roomId=${widget.roomId}');
-          }
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _hasVoted = false);
+          backgroundColor: AppColors.primary,
+        ),
+      );
+
+      unawaited(_completeVoting(force: false));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isVoting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Vote error: $e')),
+      );
+    }
+  }
+
+  Future<void> _completeVoting({required bool force}) async {
+    if (_isFinalizing || _navigating) return;
+    setState(() => _isFinalizing = true);
+    try {
+      await _lobbyService.completeVotingIfReady(
+        lobbyId: widget.roomId,
+        requestedByUserId: widget.currentUserId,
+        force: force,
+      );
+    } catch (e) {
+      debugPrint('completeVotingIfReady error: $e');
+    } finally {
+      if (mounted) setState(() => _isFinalizing = false);
+    }
+  }
+
+  void _goToResults() {
+    if (_navigating) return;
+    _navigating = true;
+    _ticker?.cancel();
+    _lobbySubscription?.cancel();
+    if (mounted) {
+      context.go(
+        '/result-zone'
+        '?roomId=${widget.roomId}'
+        '&currentUserId=${widget.currentUserId}',
+      );
     }
   }
 
@@ -100,6 +202,36 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         centerTitle: true,
+        actions: [
+          ValueListenableBuilder<int>(
+            valueListenable: _secondsNotifier,
+            builder: (context, seconds, _) {
+              if (seconds <= 0) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${seconds}s',
+                    style: TextStyle(
+                      color: seconds <= 10
+                          ? Colors.red[200]
+                          : Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: AppPageBackground(
         child: Stack(
@@ -115,25 +247,36 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
                     .collection('submitted_outfits')
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
                     return const Center(
                       child: CircularProgressIndicator(
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.primary),
                       ),
                     );
                   }
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  if (!snapshot.hasData ||
+                      snapshot.data!.docs.isEmpty) {
                     return Center(
                       child: Text('Loading...',
                           style: AppTextStyles.body),
                     );
                   }
 
-                  final opponentsOutfits = snapshot.data!.docs
+                  final allOpponents = snapshot.data!.docs
                       .where((doc) => doc.id != widget.currentUserId)
                       .toList();
+
+                  // Prefer real human players; show bots only when no human has submitted yet.
+                  final realOpponents = allOpponents.where((doc) {
+                    final d = doc.data() as Map<String, dynamic>;
+                    return d['isBot'] != true;
+                  }).toList();
+
+                  final opponentsOutfits =
+                      realOpponents.isNotEmpty ? realOpponents : allOpponents;
 
                   if (opponentsOutfits.isEmpty) {
                     return Center(
@@ -154,7 +297,7 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
                         padding: const EdgeInsets.all(14),
                         child: Text(
                           _hasVoted
-                              ? 'Thanks for voting!'
+                              ? 'Thanks for voting! Results incoming...'
                               : 'Tap a look to vote',
                           style: AppTextStyles.subheading
                               .copyWith(color: AppColors.textDark),
@@ -173,27 +316,34 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
                           ),
                           itemCount: opponentsOutfits.length,
                           itemBuilder: (context, index) {
-                            final submittedData = opponentsOutfits[index]
-                                .data() as Map<String, dynamic>;
-                            final opponentId = opponentsOutfits[index].id;
+                            final submittedData =
+                                opponentsOutfits[index].data()
+                                    as Map<String, dynamic>;
+                            final opponentId =
+                                opponentsOutfits[index].id;
                             final isBot =
-                                submittedData['isBot'] as bool? ?? false;
+                                submittedData['isBot'] as bool? ??
+                                    false;
                             final outfitData =
-                                submittedData['outfitData']
-                                    as Map<String, dynamic>? ??
+                                (submittedData['outfitData']
+                                        as Map<String, dynamic>?) ??
                                     {};
                             final username =
-                                submittedData['username'] as String? ??
+                                submittedData['username']
+                                        as String? ??
                                     (isBot ? 'Bot' : 'Player');
 
                             return RevealIn(
-                              delay: Duration(milliseconds: 90 * index),
+                              delay: Duration(
+                                  milliseconds: 90 * index),
                               child: _VoteCard(
                                 username: username,
                                 isBot: isBot,
                                 outfitData: outfitData,
                                 hasVoted: _hasVoted,
-                                onVote: () => _voteForOutfit(opponentId),
+                                isLoading: _isVoting,
+                                onVote: () =>
+                                    _voteForOutfit(opponentId),
                               ),
                             );
                           },
@@ -220,6 +370,7 @@ class _VoteCard extends StatelessWidget {
   final bool isBot;
   final Map<String, dynamic> outfitData;
   final bool hasVoted;
+  final bool isLoading;
   final VoidCallback onVote;
 
   const _VoteCard({
@@ -227,6 +378,7 @@ class _VoteCard extends StatelessWidget {
     required this.isBot,
     required this.outfitData,
     required this.hasVoted,
+    required this.isLoading,
     required this.onVote,
   });
 
@@ -234,7 +386,7 @@ class _VoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return TapBounce(
       scale: 0.95,
-      onTap: hasVoted ? null : onVote,
+      onTap: (hasVoted || isLoading) ? null : onVote,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -255,12 +407,13 @@ class _VoteCard extends StatelessWidget {
                 width: double.infinity,
                 color: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 6),
-                child: _OutfitView(isBot: isBot, outfitData: outfitData),
+                child: _OutfitView(
+                    isBot: isBot, outfitData: outfitData),
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              padding: const EdgeInsets.symmetric(
+                  vertical: 8, horizontal: 12),
               color: AppColors.cardBgPastel,
               width: double.infinity,
               child: Column(
@@ -269,13 +422,13 @@ class _VoteCard extends StatelessWidget {
                     username,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        AppTextStyles.body.copyWith(color: AppColors.textDark),
+                    style: AppTextStyles.body
+                        .copyWith(color: AppColors.textDark),
                   ),
                   if (!hasVoted) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Vote',
+                      isLoading ? '...' : 'Vote',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w800,
@@ -306,8 +459,18 @@ class _OutfitView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isBot) {
-      final botImage = outfitData['botImage'] as String? ??
+      // bots store imageUrl (set by completePlayIfReady); legacy key was botImage
+      final botImage =
+          outfitData['imageUrl'] as String? ??
+          outfitData['botImage'] as String? ??
           'assets/bots/avatar4.png';
+      if (botImage.startsWith('http')) {
+        return Image.network(
+          botImage,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => const _OutfitFallback(),
+        );
+      }
       return Image.asset(
         botImage,
         fit: BoxFit.contain,
@@ -370,10 +533,12 @@ class _OutfitFallback extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.checkroom, size: 40, color: AppColors.primaryLight),
+          const Icon(Icons.checkroom,
+              size: 40, color: AppColors.primaryLight),
           const SizedBox(height: 5),
           Text('Loading...',
-              textAlign: TextAlign.center, style: AppTextStyles.caption),
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption),
         ],
       ),
     );

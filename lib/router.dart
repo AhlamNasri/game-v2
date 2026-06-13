@@ -90,7 +90,12 @@ GoRouter createAppRouter(String initialRoute) {
         path: '/result-zone',
         builder: (context, state) {
           final roomId = state.uri.queryParameters['roomId'] ?? '';
-          return ResultZoneScreen(roomId: roomId);
+          final currentUserId =
+              state.uri.queryParameters['currentUserId'] ??
+              FirebaseAuth.instance.currentUser?.uid ??
+              '';
+          return ResultZoneScreen(
+              roomId: roomId, currentUserId: currentUserId);
         },
       ),
       GoRoute(path: '/menu', builder: (context, state) => const MenuScreen()),

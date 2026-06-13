@@ -1,6 +1,6 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fashion_room_girls/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,44 +10,91 @@ class CompetitionIntroScreen extends StatefulWidget {
   const CompetitionIntroScreen({super.key, required this.roomId});
 
   @override
-  State<CompetitionIntroScreen> createState() =>
-      _CompetitionIntroScreenState();
+  State<CompetitionIntroScreen> createState() => _CompetitionIntroScreenState();
 }
 
 class _CompetitionIntroScreenState extends State<CompetitionIntroScreen> {
-  int _secondsLeft = 5;
+  static const int _introSeconds = 5;
+
   Timer? _timer;
-  String _theme = '';
-  List<dynamic> _players = [];
+  int _secondsLeft = _introSeconds;
+  String _theme = 'Style Libre';
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadLobbyAndStart();
+    unawaited(_loadThemeAndStartTimer());
   }
 
-  Future<void> _loadLobbyAndStart() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('lobbies')
-        .doc(widget.roomId)
-        .get();
+  Future<void> _loadThemeAndStartTimer() async {
+    if (widget.roomId.trim().isEmpty) {
+      _showError('Room not found.');
+      return;
+    }
 
-    if (!doc.exists || !mounted) return;
-
-    final data = doc.data()!;
-    setState(() {
-      _theme = data['theme'] as String? ?? 'Style Libre';
-      _players = List<dynamic>.from(data['players'] ?? []);
-    });
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_secondsLeft > 1) {
-        setState(() => _secondsLeft--);
-      } else {
-        t.cancel();
-        if (mounted) context.go('/play-zone?roomId=${widget.roomId}');
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('lobbies')
+          .doc(widget.roomId)
+          .get();
+      final data = snapshot.data();
+      if (!snapshot.exists || data == null) {
+        _showError('Room not found.');
+        return;
       }
+
+      if (!mounted) return;
+      setState(() {
+        _theme = _readText(data, 'theme', fallback: 'Style Libre');
+        _loading = false;
+        _error = null;
+      });
+
+      _startCountdown();
+    } catch (error) {
+      _showError('Unable to load competition: $error');
+    }
+  }
+
+  void _startCountdown() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_secondsLeft <= 1) {
+        timer.cancel();
+        _goToPlayZone();
+        return;
+      }
+      setState(() => _secondsLeft--);
     });
+  }
+
+  void _goToPlayZone() {
+    if (!mounted) return;
+    final uri = Uri(
+      path: '/play-zone',
+      queryParameters: {'roomId': widget.roomId},
+    );
+    context.go(uri.toString());
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _error = message;
+    });
+  }
+
+  String _readText(
+    Map<String, dynamic> data,
+    String key, {
+    required String fallback,
+  }) {
+    final value = data[key]?.toString().trim();
+    return value == null || value.isEmpty ? fallback : value;
   }
 
   @override
@@ -58,125 +105,251 @@ class _CompetitionIntroScreenState extends State<CompetitionIntroScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF2B2430),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFFFD36B)),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF2B2430),
+        body: _IntroMessage(
+          title: 'Competition Unavailable',
+          message: _error!,
+          actionLabel: 'Back',
+          onPressed: () => context.go('/menu'),
+        ),
+      );
+    }
+
+    final progress = _secondsLeft / _introSeconds;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF2A0D3A),
+      backgroundColor: const Color(0xFF2B2430),
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
             children: [
-              // Title
-              Text(
-                "Contest Starts",
-                textAlign: TextAlign.center,
-                style: AppTextStyles.heading.copyWith(
-                  color: Colors.amber,
-                  fontSize: 22,
-                  letterSpacing: 2,
+              Expanded(
+                flex: 4,
+                child: _CountdownPanel(
+                  secondsLeft: _secondsLeft,
+                  progress: progress,
                 ),
               ),
-              const SizedBox(height: 32),
-
-              // Theme
-              Text(
-                "Theme:",
-                style: AppTextStyles.subheading.copyWith(
-                    color: Colors.white70),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _theme.isEmpty ? '...' : _theme,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.heading.copyWith(
-                  color: Colors.pinkAccent,
-                  fontSize: 32,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Player avatar circles
-              if (_players.isNotEmpty)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(4, (i) {
-                    if (i < _players.length) {
-                      final player =
-                          _players[i] as Map<String, dynamic>;
-                      final avatarId =
-                          player['avatarId'] as String? ?? 'avatar1';
-                      final nickname =
-                          player['nickname'] as String? ?? '';
-                      return Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 12),
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              radius: 28,
-                              backgroundColor:
-                                  AppColors.primary.withValues(alpha: 0.3),
-                              backgroundImage:
-                                  AssetImage('assets/avatars/$avatarId.png'),
-                              onBackgroundImageError: (err, _) {},
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              nickname,
-                              style: AppTextStyles.caption
-                                  .copyWith(color: Colors.white70),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12),
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundColor: Colors.white12,
-                            child: const Icon(Icons.add,
-                                color: Colors.white38),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "...",
-                            style: AppTextStyles.caption
-                                .copyWith(color: Colors.white38),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ),
-              const SizedBox(height: 40),
-
-              // Countdown
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) =>
-                    ScaleTransition(scale: animation, child: child),
-                child: Text(
-                  "$_secondsLeft",
-                  key: ValueKey(_secondsLeft),
-                  style: AppTextStyles.heading.copyWith(
-                    color: Colors.white,
-                    fontSize: 80,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "Get ready",
-                style: AppTextStyles.caption
-                    .copyWith(color: Colors.white38),
-              ),
+              const SizedBox(width: 18),
+              Expanded(flex: 5, child: _ThemePanel(theme: _theme)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CountdownPanel extends StatelessWidget {
+  final int secondsLeft;
+  final double progress;
+
+  const _CountdownPanel({required this.secondsLeft, required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7F1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFD36B), width: 2),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Contest Starting',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF5F4546),
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: 112,
+            height: 112,
+            decoration: BoxDecoration(
+              color: const Color(0xFFB96B75),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                '$secondsLeft',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 62,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: const Color(0xFFEFD8CE),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFFFFD36B),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Preparing the stage',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF8C6E6D),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemePanel extends StatelessWidget {
+  final String theme;
+
+  const _ThemePanel({required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3A3140),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF6C596D)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD36B),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Text(
+              'CONTEST THEME',
+              style: TextStyle(
+                color: Color(0xFF4A3312),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            theme,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              height: 1.05,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Create a look that matches the theme and get ready to vote for other stylists.',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Color(0xFFE9D8E8),
+              fontSize: 13,
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IntroMessage extends StatelessWidget {
+  final String title;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onPressed;
+
+  const _IntroMessage({
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 360,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7F1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFB96B75),
+              size: 42,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF5F4546),
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF8C6E6D),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton(
+              onPressed: onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFB96B75),
+                foregroundColor: Colors.white,
+              ),
+              child: Text(actionLabel),
+            ),
+          ],
         ),
       ),
     );
