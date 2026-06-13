@@ -54,15 +54,20 @@ class LobbyService {
     final existingLobbyId = await _findActiveLobbyForUser(userId);
     if (existingLobbyId != null) return existingLobbyId;
 
+    // Query only by status so no composite index is required.
+    // playerCount filter is applied in Dart to avoid needing a Firestore index.
     final querySnapshot = await _firestore
         .collection('lobbies')
-        .where('levelRequired', isEqualTo: userLevel)
         .where('status', isEqualTo: 'waiting')
-        .where('playerCount', isLessThan: maxPlayers)
-        .limit(8)
+        .limit(20)
         .get();
 
-    for (final candidate in querySnapshot.docs) {
+    final candidates = querySnapshot.docs.where((doc) {
+      final count = doc.data()['playerCount'] as int? ?? 0;
+      return count < maxPlayers;
+    }).toList();
+
+    for (final candidate in candidates) {
       final lobbyId = await _tryJoinLobby(candidate.reference, profile);
       if (lobbyId != null) return lobbyId;
     }
