@@ -117,8 +117,23 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
     _secondsNotifier.value = seconds; // no setState — only the timer badge rebuilds
 
     if (seconds == 0) {
-      unawaited(_completeVoting(force: true));
+      _ticker?.cancel();
+      unawaited(_autoVoteAndNavigate());
     }
+  }
+
+  Future<void> _autoVoteAndNavigate() async {
+    if (_navigating) return;
+    try {
+      await _lobbyService.completeVotingIfReady(
+        lobbyId: widget.roomId,
+        requestedByUserId: widget.currentUserId,
+        force: true,
+      );
+    } catch (e) {
+      debugPrint('completeVotingIfReady error: $e');
+    }
+    _goToResults();
   }
 
   Future<void> _voteForOutfit(String opponentId) async {
@@ -142,7 +157,7 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
         SnackBar(
           content: Text(
             accepted
-                ? 'Vote counted! Waiting for others...'
+                ? 'Vote counted! Preparing results...'
                 : 'Already voted.',
           ),
           backgroundColor: AppColors.primary,
@@ -150,6 +165,9 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
       );
 
       unawaited(_completeVoting(force: false));
+      // Navigate immediately after a brief delay so the snackbar is visible.
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) _goToResults();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isVoting = false);
