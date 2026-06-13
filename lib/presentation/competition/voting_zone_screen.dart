@@ -164,10 +164,8 @@ class _VotingZoneScreenState extends State<VotingZoneScreen> {
         ),
       );
 
+      // Stay on screen until timer expires — _autoVoteAndNavigate handles redirect.
       unawaited(_completeVoting(force: false));
-      // Navigate immediately after a brief delay so the snackbar is visible.
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) _goToResults();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isVoting = false);
